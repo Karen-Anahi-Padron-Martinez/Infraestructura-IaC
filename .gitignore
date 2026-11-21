@@ -1,0 +1,19 @@
+# Secretos: nunca se versionan
+.env
+*.tfvars
+!*.tfvars.example
+*.pem
+*.key
+id_rsa*
+.vault_pass*
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+.terraform.lock.hcl.bak
+
+# Resultados locales
+resultados/
+*.log

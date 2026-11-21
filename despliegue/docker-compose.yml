@@ -1,0 +1,76 @@
+# Gestor de Proyectos: aplicación completa (frontend + backend + base de datos)
+# Uso:  cp .env.example .env  (y define contraseñas)  ->  docker compose up -d
+# El mismo archivo lo despliega Ansible en el servidor cloud.
+name: gestor
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Define DB_ROOT_PASSWORD en .env}
+      MARIADB_DATABASE: dbgestor
+      MARIADB_USER: ${DB_USER:-gestor}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+    volumes:
+      - datos-mariadb:/var/lib/mysql
+      # Esquema y datos de prueba del repositorio Microservicio-BD (solo se ejecutan con el volumen vacío)
+      - ${BD_SQL_DIR:-../../Microservicio-BD/sql}:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    mem_limit: 384m
+    networks: [backend]
+    # Sin "ports": la base de datos no se expone fuera de la red interna
+
+  api:
+    image: ${REGISTRO:-ghcr.io/karen-anahi-padron-martinez}/microservicio1-api:${API_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:mariadb://mariadb:3306/dbgestor?useUnicode=true&characterEncoding=UTF-8
+      DB_USER: ${DB_USER:-gestor}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      # El esquema lo administra Microservicio-BD; Hibernate no lo modifica
+      DDL_AUTO: none
+      CORS_ALLOWED_ORIGINS: ${CLIENTE_URL:-http://localhost:8082}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      # La imagen no trae curl: se consulta /actuator/health con bash y /dev/tcp
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    mem_limit: 512m
+    networks: [backend]
+    # Sin "ports": solo el cliente (y Prometheus) le hablan por la red interna
+
+  cliente:
+    image: ${REGISTRO:-ghcr.io/karen-anahi-padron-martinez}/microservicio2-cliente:${CLIENTE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://api:8081
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${CLIENTE_PUERTO:-8082}:8082"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8082 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    mem_limit: 512m
+    networks: [backend]
+
+volumes:
+  datos-mariadb:
+
+networks:
+  backend:
