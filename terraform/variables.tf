@@ -11,15 +11,15 @@ variable "proyecto" {
 }
 
 variable "ubicacion" {
-  description = "Región de Azure permitida por la política de la suscripción."
+  description = "Región de Azure. Azure for Students solo permite: westus, northcentralus, canadacentral, chilecentral, norwayeast."
   type        = string
-  default     = "eastus"
+  default     = "northcentralus"
 }
 
 variable "tamano_vm" {
-  description = "Tamaño de la VM. B2s = 2 vCPU y 4 GB, suficiente para la aplicación y el monitoreo."
+  description = "Tamaño de la VM: 2 vCPU AMD y 4 GB (la aplicación y el monitoreo caben). Standard_B2s no tenía capacidad en northcentralus."
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_B2als_v2"
 }
 
 variable "usuario_admin" {
