@@ -17,3 +17,6 @@ crash.log
 # Resultados locales
 resultados/
 *.log
+
+# Generado por Terraform (contiene rutas locales)
+ansible/inventario.ini
