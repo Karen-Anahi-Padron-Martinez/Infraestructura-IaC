@@ -1,0 +1,55 @@
+# Instala Docker Engine y el plugin Compose desde el repositorio oficial de Docker
+- name: Crear directorio de llaves de APT
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Descargar llave GPG de Docker
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Agregar repositorio de Docker
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: [deb]
+    uris: https://download.docker.com/linux/ubuntu
+    suites: ["{{ ansible_facts['distribution_release'] }}"]
+    components: [stable]
+    architectures: [amd64]
+    signed_by: /etc/apt/keyrings/docker.asc
+
+- name: Instalar Docker Engine y Compose
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Rotación de logs de contenedores (evita llenar el disco)
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+  notify: Reiniciar docker
+
+- name: Docker activo y al arranque
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Permitir al usuario de despliegue usar docker
+  ansible.builtin.user:
+    name: "{{ usuario_despliegue }}"
+    groups: docker
+    append: true
+
+- name: Aplicar reinicio de docker si cambió la configuración
+  ansible.builtin.meta: flush_handlers

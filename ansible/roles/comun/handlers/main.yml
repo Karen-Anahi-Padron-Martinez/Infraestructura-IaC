@@ -1,0 +1,11 @@
+# Se ejecutan en este orden: primero valida la configuración completa y solo después recarga
+- name: Validar configuración de sshd
+  ansible.builtin.command: sshd -t
+  changed_when: false
+  listen: Validar y recargar ssh
+
+- name: Recargar ssh
+  ansible.builtin.service:
+    name: ssh
+    state: reloaded
+  listen: Validar y recargar ssh

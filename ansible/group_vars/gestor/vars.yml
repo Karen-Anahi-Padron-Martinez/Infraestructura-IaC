@@ -1,0 +1,21 @@
+# Variables del grupo "gestor". Los secretos van cifrados en vault.yml (Ansible Vault).
+zona_horaria: America/Mexico_City
+
+usuario_despliegue: "{{ ansible_user }}"
+dir_app: /opt/gestor
+
+# Imágenes publicadas por el pipeline en GitHub Container Registry
+registro: ghcr.io/karen-anahi-padron-martinez
+api_tag: latest
+cliente_tag: latest
+
+# El cliente web se publica en el puerto 80 (abierto en el NSG de Terraform)
+cliente_puerto: 80
+cliente_url: "http://{{ fqdn_publico }}"
+
+# Scripts SQL de Microservicio-BD (montados en el contenedor de Ansible en /bd-sql)
+bd_sql_origen: /bd-sql/
+
+db_usuario: gestor
+db_password: "{{ vault_db_password }}"
+db_root_password: "{{ vault_db_root_password }}"

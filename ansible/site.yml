@@ -1,0 +1,14 @@
+# Configuración completa del servidor y despliegue del Gestor de Proyectos.
+# Idempotente: se puede ejecutar varias veces; solo cambia lo que difiere del estado deseado.
+#   ansible-playbook site.yml                 -> todo
+#   ansible-playbook site.yml --tags app      -> solo redespliegue de la aplicación
+- name: Configurar servidor y desplegar el Gestor de Proyectos
+  hosts: gestor
+  become: true
+  roles:
+    - role: comun
+      tags: [comun]
+    - role: docker
+      tags: [docker]
+    - role: app
+      tags: [app]

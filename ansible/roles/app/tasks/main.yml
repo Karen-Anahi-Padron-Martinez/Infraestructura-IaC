@@ -1,0 +1,79 @@
+# Despliega la aplicación con Docker Compose y verifica que responda
+- name: Crear directorios de la aplicación
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ dir_app }}"
+    - "{{ dir_app }}/sql"
+
+- name: Copiar scripts SQL de Microservicio-BD
+  ansible.builtin.copy:
+    src: "{{ bd_sql_origen }}"
+    dest: "{{ dir_app }}/sql/"
+    mode: "0644"
+
+- name: Copiar docker-compose.yml (mismo archivo que se prueba en local)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../despliegue/docker-compose.yml"
+    dest: "{{ dir_app }}/docker-compose.yml"
+    mode: "0644"
+
+- name: Generar .env con los secretos de Ansible Vault (solo legible por root)
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ dir_app }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Descargar imágenes y levantar los servicios
+  ansible.builtin.command:
+    cmd: docker compose up -d --pull always --remove-orphans
+    chdir: "{{ dir_app }}"
+  register: compose_up
+  changed_when: compose_up.stderr is search('Started|Recreated|Created|Pulled')
+
+- name: Esperar a que el cliente reporte estado UP
+  ansible.builtin.uri:
+    url: "http://localhost:{{ cliente_puerto }}/actuator/health"
+    return_content: true
+  register: salud
+  until: salud.status == 200 and salud.json.status == 'UP'
+  retries: 30
+  delay: 10
+
+- name: Prueba de humo - login con la cuenta demo (cliente -> API -> MariaDB)
+  ansible.builtin.uri:
+    url: "http://localhost:{{ cliente_puerto }}/verificarLogin"
+    method: POST
+    body_format: json
+    body:
+      correo_electronico: demo1@example.com
+      contrasena: "Demo2026!"
+    return_content: true
+  register: login
+  failed_when: login.status != 200 or login.json.nombre == '000'
+
+- name: Estado de los contenedores
+  ansible.builtin.command:
+    cmd: docker compose ps --format "{{ '{{' }}.Service{{ '}}' }}={{ '{{' }}.Health{{ '}}' }}"
+    chdir: "{{ dir_app }}"
+  register: estado
+  changed_when: false
+
+- name: Resultado del despliegue
+  ansible.builtin.debug:
+    msg:
+      - "Servicios: {{ estado.stdout_lines | join(', ') }}"
+      - "Login demo: {{ login.json.nombre }}"
+      - "Aplicación: {{ cliente_url }}"
+
+- name: Limpiar imágenes antiguas sin uso
+  ansible.builtin.command: docker image prune -f
+  register: prune
+  changed_when: "'Total reclaimed space: 0B' not in prune.stdout"
