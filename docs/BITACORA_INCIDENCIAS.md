@@ -126,3 +126,53 @@ Formato: problema → evidencia → diagnóstico → corrección → nueva ejecu
 | Puertos 8081 (API), 3306 (MariaDB) y 9090 (Prometheus) | Cerrados |
 | `/opt/gestor/.env` en la VM | Permisos `600`, dueño `root` (azureuser recibe `Permission denied`) |
 | Servicios | `api=healthy, cliente=healthy, mariadb=healthy` |
+
+## Fase 4: CI/CD con SAST y despliegue continuo (22/11/2026)
+
+### INC-10 · Semgrep: Actuator expuesto públicamente (CWE-200) — vulnerabilidad real
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | Semgrep (`spring-actuator-dangerous-endpoints-enabled`, OWASP A01) señaló que Actuator expone `health,info,prometheus`. |
+| **Evidencia** | `curl http://gestor-717e46.northcentralus.cloudapp.azure.com/actuator/prometheus` → **200** desde internet: métricas internas visibles para cualquiera. |
+| **Diagnóstico** | Actuator compartía el puerto público del cliente (80 → 8082). |
+| **Corrección** | `MANAGEMENT_SERVER_PORT=8090` en los contenedores (puerto de administración no publicado). Health checks de Compose y Ansible usan 8090. Se agregaron regresiones: Ansible exige 404 en `/actuator/prometheus` y `ci/humo.sh` lo verifica desde internet. |
+| **Nueva ejecución** | Desde internet: `/actuator/prometheus`, `/actuator/health` y `/actuator` → **404**; `/login` → 200. Dentro de la red interna, `/actuator/prometheus` en 8090 devuelve 292 líneas de métricas. |
+| **Resultado** | Mitigado. El aviso estático de Semgrep sigue (la regla mira la configuración) y queda clasificado como *mitigado*; es WARNING, no bloquea el gate. |
+
+### INC-11 · Semgrep: hashes BCrypt en los datos de prueba — falso positivo
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | 3 hallazgos ERROR `detected-bcrypt-hash` en `Microservicio-BD/sql/02_datos_prueba.sql`. |
+| **Diagnóstico** | Son los hashes de la contraseña demo documentada para cuentas ficticias `@example.com`. Un hash BCrypt no es una credencial reutilizable y los datos no pertenecen a ningún sistema real. |
+| **Corrección** | `-- nosemgrep: detected-bcrypt-hash` en cada línea, con una justificación en el script (commit `7895e9f`). |
+| **Resultado** | Semgrep en Microservicio-BD: 0 hallazgos activos (BD #2). |
+
+### INC-12 · Jenkins terminado por falta de memoria (OOMKilled)
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | El build Frontend #7 quedó ABORTED y Jenkins dejó de responder. |
+| **Evidencia** | `docker inspect jenkins`: `OOMKilled=true ExitCode=137` durante la etapa "Análisis SonarQube" (analizador JavaScript con Node). |
+| **Diagnóstico** | La VM de Docker local tiene 2,7 GB; SonarQube (1,2 GB) + Jenkins + el analizador de Node superaron el límite. |
+| **Corrección** | `sonar.javascript.node.maxspace=768` en el frontend y la BD; Jenkins reiniciado; pipelines ejecutados en serie. |
+| **Nueva ejecución** | Frontend #8 y BD #2: SUCCESS. |
+| **Resultado** | Resuelto. Recomendación: asignar más RAM a Docker (`.wslconfig`). |
+
+### Resumen de hallazgos SAST (Semgrep 1.186.0)
+
+| # | Regla | Severidad | Ubicación | Clasificación | Acción |
+|---|---|---|---|---|---|
+| 1 | `spring-actuator-dangerous-endpoints-enabled` | WARNING | Microservicio1 `application.properties` | Real → **mitigado** | Actuator en el puerto interno 8090 + regresión (INC-10) |
+| 2 | `spring-actuator-dangerous-endpoints-enabled` | WARNING | Microservicio2 `application.properties` | Real → **mitigado** | Ídem |
+| 3–5 | `detected-bcrypt-hash` | ERROR | Microservicio-BD `02_datos_prueba.sql` (×3) | **Falso positivo** | `nosemgrep` con justificación (INC-11) |
+
+### Ejecuciones de la fase 4 (Jenkins)
+
+| Pipeline | Build | Etapas nuevas | Resultado |
+|---|---|---|---|
+| Backend-Microservicio1-API | **#3** | SAST → … → Publicar imagen `api:3` → Desplegar en Azure → Prueba de humo | SUCCESS (121 pruebas; despliegue `api=3 cliente=latest`) |
+| App-Microservicio2-Cliente | **#5** | Ídem con `cliente:5` | SUCCESS (40 pruebas; despliegue `api=3 cliente=5`) |
+| Frontend-Microservicio2 | **#8** | SAST (Semgrep) | SUCCESS (66 pruebas; 1 WARNING ya clasificado) |
+| BD-dbgestor | **#2** | SAST (Semgrep) | SUCCESS (lint 0 problemas; 42 pruebas; 0 hallazgos) |
