@@ -71,3 +71,58 @@ Formato: problema → evidencia → diagnóstico → corrección → nueva ejecu
 | **Corrección** | `tamano_vm = "Standard_B2als_v2"`: 2 vCPU AMD y 4 GB, equivalente a B2s y algo más barato. |
 | **Nueva ejecución** | `terraform plan`: 2 recursos por crear, 0 por cambiar, 0 por destruir (la red ya existente se conserva). `terraform apply`: "Apply complete! Resources: 2 added". |
 | **Resultado** | VM creada en 57 s. SSH con llave verificado: Ubuntu 24.04.5 LTS, 2 CPU, 3,8 GiB de RAM, 29 GB de disco. El acceso con contraseña se rechaza (`Permission denied (publickey)`). |
+
+## Fase 3: Ansible y despliegue (21–22/11/2026)
+
+### INC-06 · Ansible no conectaba: ruta de la llave en formato Windows
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | `ansible gestor -m ping` respondía `UNREACHABLE`. |
+| **Evidencia** | `no such identity: C:Userskaren.sshid_ed25519_gestor_azure ... Permission denied (publickey)`. |
+| **Diagnóstico** | El inventario generado por Terraform incluía `ansible_ssh_private_key_file` con la ruta de Windows. Ansible corre en un contenedor Linux, donde esa ruta no existe, y la variable del inventario tenía prioridad sobre `ansible.cfg`. |
+| **Corrección** | Se quitó la ruta de la plantilla `inventario.ini.tftpl`; la llave se define en `ansible.cfg` (`private_key_file = /root/.ssh/id_gestor`). `terraform apply` solo regeneró el archivo local (1 añadido, 1 destruido, sin cambios en Azure). |
+| **Resultado** | `vm-gestor | SUCCESS => "ping": "pong"`. |
+
+### INC-07 · PowerShell interrumpía la ejecución de Ansible
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | 1) `--tags comun,docker` solo ejecutaba la recolección de datos. 2) La salida se cortaba con `NativeCommandError` en la primera advertencia. |
+| **Evidencia** | `PLAY RECAP ... ok=1`; en el segundo caso, `[WARNING]: Module remote_tmp ... NativeCommandError`. |
+| **Diagnóstico** | 1) PowerShell convierte `a,b` en un arreglo y separa el argumento. 2) Con `$ErrorActionPreference = "Stop"`, cualquier texto en stderr se trata como error fatal. |
+| **Corrección** | Las etiquetas se pasan entre comillas (`'--tags=comun,docker'`) y `ejecutar.ps1` usa `Continue` al ejecutar el contenedor. |
+| **Nueva ejecución** | Roles `comun` y `docker`: ok=14, changed=0, failed=0 (la corrida anterior sí había terminado dentro del contenedor). |
+| **Resultado** | Resuelto. |
+
+### INC-08 · El rol `app` no era idempotente
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | Una segunda ejecución sin cambios reportaba `changed=1`. |
+| **Evidencia** | En la VM, `docker compose up -d --pull always` muestra `Pulled` para cada imagen, pero los contenedores quedan `Running` (sin recrearse). |
+| **Diagnóstico** | `changed_when` consideraba `Pulled` como cambio, aunque solo se consultaba el registro. |
+| **Corrección** | `changed_when` solo busca `Started`, `Recreated` o `Created`. |
+| **Nueva ejecución** | `ansible-playbook site.yml`: ok=24, **changed=0**, failed=0. |
+| **Resultado** | Playbook completo idempotente. |
+
+### INC-09 · Cambio de red: SSH bloqueado por el firewall
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | Al trabajar desde otra red, la IP pública cambió (154.212.7.54 → 177.242.194.123). |
+| **Diagnóstico** | El NSG solo permite SSH y Grafana desde `cidrs_admin`. |
+| **Corrección** | Se agregó la IP nueva a `cidrs_admin` en `terraform.tfvars`. `terraform plan`: 0 por crear, 1 por cambiar (solo el NSG), 0 por destruir. |
+| **Resultado** | `Apply complete! Resources: 0 added, 1 changed` (4 s); SSH restablecido sin tocar la VM. |
+
+### Verificación del despliegue en Azure
+
+| Prueba (desde internet) | Resultado |
+|---|---|
+| `GET http://gestor-717e46.northcentralus.cloudapp.azure.com/` | 200 en 0,76 s |
+| Login `demo1@example.com` (cliente → API → MariaDB) | Devuelve el usuario y no expone la contraseña |
+| `POST /consultarProyectos` | Datos de Microservicio-BD con acentos correctos |
+| `/actuator/health` | `UP` (liveness, readiness) |
+| Puertos 8081 (API), 3306 (MariaDB) y 9090 (Prometheus) | Cerrados |
+| `/opt/gestor/.env` en la VM | Permisos `600`, dueño `root` (azureuser recibe `Permission denied`) |
+| Servicios | `api=healthy, cliente=healthy, mariadb=healthy` |

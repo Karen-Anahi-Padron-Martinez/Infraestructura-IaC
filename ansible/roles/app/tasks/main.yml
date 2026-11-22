@@ -36,7 +36,8 @@
     cmd: docker compose up -d --pull always --remove-orphans
     chdir: "{{ dir_app }}"
   register: compose_up
-  changed_when: compose_up.stderr is search('Started|Recreated|Created|Pulled')
+  # "Pulled" aparece aunque la imagen no cambie; solo hay cambio real si un contenedor se crea, recrea o inicia
+  changed_when: compose_up.stderr is search('Started|Recreated|Created')
 
 - name: Esperar a que el cliente reporte estado UP
   ansible.builtin.uri:
