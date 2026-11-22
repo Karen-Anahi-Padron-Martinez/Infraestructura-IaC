@@ -6,8 +6,8 @@ dir_app: /opt/gestor
 
 # Imágenes publicadas por el pipeline en GitHub Container Registry
 registro: ghcr.io/karen-anahi-padron-martinez
-api_tag: latest
-cliente_tag: latest
+# Versiones a desplegar: el pipeline pasa -e api_tag=<build> o -e cliente_tag=<build>.
+# Si no se indican, el rol app conserva la versión que ya está desplegada (o "latest" la primera vez).
 
 # El cliente web se publica en el puerto 80 (abierto en el NSG de Terraform)
 cliente_puerto: 80

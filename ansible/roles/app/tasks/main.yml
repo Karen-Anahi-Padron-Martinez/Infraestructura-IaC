@@ -22,6 +22,27 @@
     dest: "{{ dir_app }}/docker-compose.yml"
     mode: "0644"
 
+- name: Leer las versiones desplegadas actualmente (si existe un .env previo)
+  ansible.builtin.slurp:
+    src: "{{ dir_app }}/.env"
+  register: env_actual
+  failed_when: false
+  no_log: true
+
+- name: Calcular versiones a desplegar (la indicada por el pipeline o la que ya estaba)
+  ansible.builtin.set_fact:
+    api_tag_efectivo: "{{ api_tag | default(_actual.API_TAG | default('latest')) }}"
+    cliente_tag_efectivo: "{{ cliente_tag | default(_actual.CLIENTE_TAG | default('latest')) }}"
+  vars:
+    _lineas: "{{ (env_actual.content | default('') | b64decode).splitlines() | select('search', '^(API|CLIENTE)_TAG=') | list }}"
+    _claves: "{{ _lineas | map('regex_replace', '=.*$', '') | list }}"
+    _valores: "{{ _lineas | map('regex_replace', '^[^=]*=', '') | list }}"
+    _actual: "{{ dict(_claves | zip(_valores)) }}"
+
+- name: Versiones elegidas
+  ansible.builtin.debug:
+    msg: "api={{ api_tag_efectivo }} cliente={{ cliente_tag_efectivo }}"
+
 - name: Generar .env con los secretos de Ansible Vault (solo legible por root)
   ansible.builtin.template:
     src: env.j2
@@ -39,14 +60,25 @@
   # "Pulled" aparece aunque la imagen no cambie; solo hay cambio real si un contenedor se crea, recrea o inicia
   changed_when: compose_up.stderr is search('Started|Recreated|Created')
 
-- name: Esperar a que el cliente reporte estado UP
-  ansible.builtin.uri:
-    url: "http://localhost:{{ cliente_puerto }}/actuator/health"
-    return_content: true
+- name: Esperar a que el cliente esté healthy (health check interno en el puerto de administración 8090)
+  ansible.builtin.command:
+    cmd: docker compose ps cliente --format "{{ '{{' }}.Health{{ '}}' }}"
+    chdir: "{{ dir_app }}"
   register: salud
-  until: salud.status == 200 and salud.json.status == 'UP'
+  until: salud.stdout == 'healthy'
   retries: 30
   delay: 10
+  changed_when: false
+
+- name: La página de login responde en el puerto público
+  ansible.builtin.uri:
+    url: "http://localhost:{{ cliente_puerto }}/login"
+    status_code: 200
+
+- name: Regresión de seguridad - Actuator no debe estar expuesto en el puerto público (CWE-200)
+  ansible.builtin.uri:
+    url: "http://localhost:{{ cliente_puerto }}/actuator/prometheus"
+    status_code: 404
 
 - name: Prueba de humo - login con la cuenta demo (cliente -> API -> MariaDB)
   ansible.builtin.uri:

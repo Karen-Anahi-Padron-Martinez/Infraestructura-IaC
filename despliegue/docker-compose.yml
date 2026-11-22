@@ -36,12 +36,14 @@ services:
       # El esquema lo administra Microservicio-BD; Hibernate no lo modifica
       DDL_AUTO: none
       CORS_ALLOWED_ORIGINS: ${CLIENTE_URL:-http://localhost:8082}
+      # Actuator (health/metrics) en un puerto de administración interno que no se publica (Semgrep CWE-200)
+      MANAGEMENT_SERVER_PORT: "8090"
     depends_on:
       mariadb:
         condition: service_healthy
     healthcheck:
       # La imagen no trae curl: se consulta /actuator/health con bash y /dev/tcp
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8090 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -55,13 +57,15 @@ services:
     restart: unless-stopped
     environment:
       API_BASE_URL: http://api:8081
+      # Actuator (health/metrics) en un puerto de administración interno que no se publica (Semgrep CWE-200)
+      MANAGEMENT_SERVER_PORT: "8090"
     depends_on:
       api:
         condition: service_healthy
     ports:
       - "${CLIENTE_PUERTO:-8082}:8082"
     healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8082 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8090 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
       interval: 15s
       timeout: 5s
       retries: 10
