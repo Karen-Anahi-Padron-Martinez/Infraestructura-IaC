@@ -176,3 +176,27 @@ Formato: problema → evidencia → diagnóstico → corrección → nueva ejecu
 | App-Microservicio2-Cliente | **#5** | Ídem con `cliente:5` | SUCCESS (40 pruebas; despliegue `api=3 cliente=5`) |
 | Frontend-Microservicio2 | **#8** | SAST (Semgrep) | SUCCESS (66 pruebas; 1 WARNING ya clasificado) |
 | BD-dbgestor | **#2** | SAST (Semgrep) | SUCCESS (lint 0 problemas; 42 pruebas; 0 hallazgos) |
+
+## Fase 5: monitoreo y observabilidad (22/11/2026)
+
+### INC-13 · Grafana no arrancaba: thrashing de disco por límite de memoria
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | El rol `monitoreo` falló: `http://localhost:3000/api/health` → `Connection reset by peer` durante 30 reintentos. |
+| **Evidencia** | `top`: **67 % iowait**. `docker stats`: Grafana leyó **32,1 GB** del disco en pocos minutos con `mem_limit: 256m`; Alloy, 891 MB con 192m. |
+| **Diagnóstico** | El binario y la caché de Grafana 13 no caben en 256 MB. El kernel desaloja páginas del cgroup y las vuelve a leer del disco continuamente (*thrashing*), saturando el disco StandardSSD de 30 GB. |
+| **Corrección** | `mem_limit` de Grafana a 768m, y de Alloy y Loki a 384m. |
+| **Nueva ejecución** | `ansible-playbook site.yml --tags monitoreo`: ok=9, failed=0. Grafana sano en unos 20 s. |
+| **Resultado** | iowait **0 %**. Grafana usa 464 MiB (por eso no cabía en 256), Alloy 81 MiB y Loki 65 MiB. |
+
+### Verificación del monitoreo
+
+| Prueba | Resultado |
+|---|---|
+| Objetivos de Prometheus | `api=up, cliente=up, contenedores=up, nodo=up, prometheus=up` |
+| Fuentes de datos de Grafana | Prometheus OK, Loki OK |
+| Reglas de alerta cargadas | 7 (ServicioCaido, ContenedorReiniciado, TasaErrores5xxAlta, LatenciaP95Alta, CPUAlta, MemoriaAlta, DiscoCasiLleno) |
+| Logs en Loki | `count_over_time({proyecto="gestor"}[1h])` = 14 líneas recibidas |
+| Grafana desde la IP del administrador | 200; desde otras IP, bloqueado por el NSG |
+| **Simulacro de caída** (`docker compose stop api`) | 18:00:07 se detiene → 18:00:27 `up(api)=0`, ServicioCaido *pending* → **18:01:28 firing** → 18:01:38 API recuperada → 18:02:18 alerta resuelta. Durante la caída la app pública respondía 500. |

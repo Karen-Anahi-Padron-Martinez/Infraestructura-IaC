@@ -19,3 +19,7 @@ bd_sql_origen: /bd-sql/
 db_usuario: gestor
 db_password: "{{ vault_db_password }}"
 db_root_password: "{{ vault_db_root_password }}"
+
+# Monitoreo (Grafana publicado en 3000, limitado por el NSG a cidrs_admin)
+dir_monitoreo: /opt/monitoreo
+grafana_admin_password: "{{ vault_grafana_admin_password }}"

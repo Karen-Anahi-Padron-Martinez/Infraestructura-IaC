@@ -1,0 +1,8 @@
+- name: Recargar Prometheus
+  # --web.enable-lifecycle permite recargar reglas y objetivos sin reiniciar el contenedor
+  ansible.builtin.uri:
+    url: http://localhost:9090/-/reload
+    method: POST
+  register: recarga
+  failed_when: false
+  changed_when: recarga.status == 200

@@ -1,0 +1,70 @@
+# Prometheus + Grafana + Loki + Alloy + node-exporter + cAdvisor junto a la aplicación
+- name: Copiar configuración de monitoreo
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../monitoreo/"
+    dest: "{{ dir_monitoreo }}/"
+    owner: root
+    group: root
+    mode: u=rwX,g=rX,o=rX
+  register: config_monitoreo
+  notify: Recargar Prometheus
+
+- name: Generar .env de monitoreo con la contraseña de Grafana (Ansible Vault)
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ dir_monitoreo }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Levantar servicios de monitoreo
+  ansible.builtin.command:
+    cmd: docker compose up -d --pull missing --remove-orphans
+    chdir: "{{ dir_monitoreo }}"
+  register: monitoreo_up
+  changed_when: monitoreo_up.stderr is search('Started|Recreated|Created')
+
+- name: Aplicar recarga de Prometheus si cambió su configuración
+  ansible.builtin.meta: flush_handlers
+
+- name: Esperar a que Grafana esté sano
+  ansible.builtin.uri:
+    url: http://localhost:3000/api/health
+    return_content: true
+  register: grafana_salud
+  until: grafana_salud.status == 200 and grafana_salud.json.database == 'ok'
+  retries: 30
+  delay: 5
+
+- name: Todos los objetivos de Prometheus deben estar arriba (api, cliente, nodo, contenedores)
+  ansible.builtin.uri:
+    url: http://localhost:9090/api/v1/targets?state=active
+    return_content: true
+  register: objetivos
+  until: >-
+    objetivos.status == 200 and
+    (objetivos.json.data.activeTargets | length) >= 5 and
+    (objetivos.json.data.activeTargets | rejectattr('health', 'equalto', 'up') | list | length) == 0
+  retries: 20
+  delay: 10
+
+- name: Grafana se conecta con Prometheus y Loki
+  ansible.builtin.uri:
+    url: "http://localhost:3000/api/datasources/uid/{{ item }}/health"
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: fuentes
+  until: fuentes.status == 200 and fuentes.json.status == 'OK'
+  retries: 12
+  delay: 10
+  loop: [prometheus, loki]
+  no_log: true
+
+- name: Resultado del monitoreo
+  ansible.builtin.debug:
+    msg:
+      - "Objetivos: {{ objetivos.json.data.activeTargets | map(attribute='labels.job') | zip(objetivos.json.data.activeTargets | map(attribute='health')) | map('join', '=') | join(', ') }}"
+      - "Grafana: http://{{ fqdn_publico }}:3000 (usuario admin)"

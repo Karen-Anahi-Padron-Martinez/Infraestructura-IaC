@@ -1,0 +1,109 @@
+# Monitoreo y observabilidad del Gestor de Proyectos.
+# Se une a la red "gestor_backend" de la aplicación para leer las métricas internas (puerto 8090).
+# Solo Grafana (3000) se publica; el NSG de Terraform lo limita a las IP del administrador.
+name: monitoreo
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - datos-prometheus:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"   # solo local (túnel SSH si se necesita); Grafana lo consulta por la red interna
+    mem_limit: 300m
+    networks: [monitoreo, gestor]
+
+  node-exporter:
+    image: prom/node-exporter:v1.13.1
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    mem_limit: 64m
+    networks: [monitoreo]
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.61.1
+    restart: unless-stopped
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=15s
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    devices:
+      - /dev/kmsg
+    mem_limit: 192m
+    networks: [monitoreo]
+
+  loki:
+    image: grafana/loki:3.6.22
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - datos-loki:/loki
+    # Con menos memoria el contenedor relee sus archivos del disco continuamente (INC-13)
+    mem_limit: 384m
+    networks: [monitoreo]
+
+  alloy:
+    # Recolecta los logs de los contenedores (Docker socket solo lectura) y los envía a Loki
+    image: grafana/alloy:v1.22.0
+    restart: unless-stopped
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - datos-alloy:/var/lib/alloy/data
+    # Con 192m releía su binario del disco continuamente (INC-13)
+    mem_limit: 384m
+    networks: [monitoreo]
+
+  grafana:
+    image: grafana/grafana:13.3.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Define GRAFANA_ADMIN_PASSWORD en .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/gestor.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - datos-grafana:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on: [prometheus, loki]
+    # Grafana 13 no cabe en 256m: releyó 32 GB del disco en minutos (iowait 67 %, INC-13)
+    mem_limit: 768m
+    networks: [monitoreo]
+
+volumes:
+  datos-prometheus:
+  datos-loki:
+  datos-alloy:
+  datos-grafana:
+
+networks:
+  monitoreo:
+  gestor:
+    # Red de la aplicación (creada por el compose "gestor")
+    name: gestor_backend
+    external: true
