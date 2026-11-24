@@ -13,10 +13,10 @@ Infraestructura como código y despliegue del Gestor de Proyectos.
 | Carpeta | Contenido | Estado |
 |---|---|---|
 | `despliegue/` | `docker-compose.yml`: cliente, API y MariaDB | Listo |
-| `ci/` | Scripts de Jenkins: Semgrep (SAST), despliegue con Ansible y prueba de humo | Listo |
+| `ci/` | Scripts de Jenkins: Semgrep (SAST), despliegue con Ansible y prueba de humo; verificación de trazas | Listo |
 | `terraform/` | Aprovisionamiento en Azure: red, VM, firewall, IP pública | Listo |
 | `ansible/` | Configuración del servidor, despliegue y monitoreo (roles comun, docker, app, monitoreo) | Listo |
-| `monitoreo/` | Prometheus, Grafana, Loki + Alloy, node-exporter, cAdvisor y 7 alertas | Listo |
+| `monitoreo/` | Prometheus, Grafana, Loki + Alloy, node-exporter, cAdvisor, 7 alertas y trazas OpenTelemetry en Tempo | Listo |
 | `rendimiento/` | Pruebas de carga con k6 (humo, carga, estrés), reportes y análisis en `RESULTADOS.md` | Listo |
 
 ## Imágenes de contenedor

@@ -21,3 +21,7 @@ resultados/
 
 # Generado por Terraform (contiene rutas locales)
 ansible/inventario.ini
+
+# Agente OpenTelemetry (trazas) - descargado por Ansible, nunca versionado
+despliegue/otel/
+*.jar

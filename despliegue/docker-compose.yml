@@ -38,6 +38,18 @@ services:
       CORS_ALLOWED_ORIGINS: ${CLIENTE_URL:-http://localhost:8082}
       # Actuator (health/metrics) en un puerto de administración interno que no se publica (Semgrep CWE-200)
       MANAGEMENT_SERVER_PORT: "8090"
+      # Trazas OpenTelemetry (agente Java, sin cambios de código). Se activa con OTEL_JAVA_OPTS en .env
+      JAVA_TOOL_OPTIONS: ${OTEL_JAVA_OPTS:-}
+      OTEL_SERVICE_NAME: gestor-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_ENDPOINT:-http://tempo:4318}
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=${ENTORNO:-local}
+      # trace_id en cada línea de log: Grafana enlaza el log con su traza en Tempo
+      LOGGING_PATTERN_CORRELATION: "trace_id=%X{trace_id} span_id=%X{span_id} "
+    volumes:
+      - ${OTEL_AGENTE_DIR:-./otel}:/otel:ro
     depends_on:
       mariadb:
         condition: service_healthy
@@ -59,6 +71,18 @@ services:
       API_BASE_URL: http://api:8081
       # Actuator (health/metrics) en un puerto de administración interno que no se publica (Semgrep CWE-200)
       MANAGEMENT_SERVER_PORT: "8090"
+      # Trazas OpenTelemetry (agente Java, sin cambios de código). Se activa con OTEL_JAVA_OPTS en .env
+      JAVA_TOOL_OPTIONS: ${OTEL_JAVA_OPTS:-}
+      OTEL_SERVICE_NAME: gestor-cliente
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_ENDPOINT:-http://tempo:4318}
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: none
+      OTEL_LOGS_EXPORTER: none
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=${ENTORNO:-local}
+      # trace_id en cada línea de log: Grafana enlaza el log con su traza en Tempo
+      LOGGING_PATTERN_CORRELATION: "trace_id=%X{trace_id} span_id=%X{span_id} "
+    volumes:
+      - ${OTEL_AGENTE_DIR:-./otel}:/otel:ro
     depends_on:
       api:
         condition: service_healthy

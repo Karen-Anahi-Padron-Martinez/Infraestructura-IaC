@@ -74,6 +74,18 @@ services:
     mem_limit: 384m
     networks: [monitoreo]
 
+  tempo:
+    # Trazas distribuidas (OpenTelemetry). Recibe OTLP solo por la red interna; no publica puertos
+    image: grafana/tempo:2.10.10
+    restart: unless-stopped
+    command: -config.file=/etc/tempo/tempo.yml
+    user: "0"   # escribe en el volumen /var/tempo
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - datos-tempo:/var/tempo
+    mem_limit: 384m
+    networks: [monitoreo, gestor]
+
   grafana:
     image: grafana/grafana:13.3.1
     restart: unless-stopped
@@ -100,6 +112,7 @@ volumes:
   datos-loki:
   datos-alloy:
   datos-grafana:
+  datos-tempo:
 
 networks:
   monitoreo:

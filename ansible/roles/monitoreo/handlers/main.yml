@@ -6,3 +6,10 @@
   register: recarga
   failed_when: false
   changed_when: recarga.status == 200
+
+- name: Reiniciar Grafana
+  # Grafana solo lee el provisioning de datasources al arrancar
+  ansible.builtin.command:
+    cmd: docker compose restart grafana
+    chdir: "{{ dir_monitoreo }}"
+  changed_when: true

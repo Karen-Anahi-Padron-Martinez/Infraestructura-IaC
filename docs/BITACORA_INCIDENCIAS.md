@@ -195,7 +195,7 @@ Formato: problema → evidencia → diagnóstico → corrección → nueva ejecu
 | Prueba | Resultado |
 |---|---|
 | Objetivos de Prometheus | `api=up, cliente=up, contenedores=up, nodo=up, prometheus=up` |
-| Fuentes de datos de Grafana | Prometheus OK, Loki OK |
+| Fuentes de datos de Grafana | Prometheus OK, Loki OK (Tempo OK desde el 24/11, ver INC-16) |
 | Reglas de alerta cargadas | 7 (ServicioCaido, ContenedorReiniciado, TasaErrores5xxAlta, LatenciaP95Alta, CPUAlta, MemoriaAlta, DiscoCasiLleno) |
 | Logs en Loki | `count_over_time({proyecto="gestor"}[1h])` = 14 líneas recibidas |
 | Grafana desde la IP del administrador | 200; desde otras IP, bloqueado por el NSG |
@@ -223,3 +223,29 @@ Formato: problema → evidencia → diagnóstico → corrección → nueva ejecu
 | **Diagnóstico** | Los cortes de conexión ocurren en el camino del generador de carga: red NAT de Docker Desktop en una laptop con 2,7 GB para Docker y conexión doméstica con 40 conexiones simultáneas. No hay correspondencia en el servidor. |
 | **Corrección** | No requiere cambios en la aplicación. Se documentó como limitación del entorno de prueba, con la recomendación de ejecutar k6 desde una VM en la misma región de Azure para estrés de mayor escala. |
 | **Resultado** | El escenario cumplió todos los umbrales (errores 0,50 % < 1 %; p95 de 206 ms). Análisis completo en `rendimiento/RESULTADOS.md`. |
+
+## Extra: trazas distribuidas con OpenTelemetry (24/11/2026)
+
+Agente Java de OpenTelemetry 2.34.0, descargado por Ansible con su SHA-256 verificado y activado con `JAVA_TOOL_OPTIONS`. No requiere cambios de código. Las trazas se envían por OTLP/HTTP a Grafana Tempo 2.10.10, que no publica puertos. Grafana enlaza log → traza (campo `trace_id` en Loki) y traza → logs.
+
+### INC-16 · Grafana no cargaba el nuevo datasource de Tempo
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | El rol `monitoreo` falló en "Grafana se conecta con Prometheus, Loki y Tempo": HTTP 500 durante 12 reintentos, también en la segunda ejecución. |
+| **Evidencia** | `/api/datasources/uid/tempo/health` → `Unable to load datasource metadata`. En el log de Grafana: `error="data source not found"`. Tempo sí estaba listo (`/ready` = `ready` y todos sus módulos en `Running`). |
+| **Diagnóstico** | Grafana lee el *provisioning* de datasources **solo al arrancar**. El rol copiaba el archivo nuevo, pero el contenedor de Grafana no cambiaba y por eso no se reiniciaba. Hasta ahora no había pasado porque los datasources nunca habían cambiado. |
+| **Corrección** | Se agregó el handler `Reiniciar Grafana`, notificado cuando cambia la configuración de monitoreo (junto con `Recargar Prometheus`). Grafana se reinició una vez a mano porque los archivos ya estaban copiados. |
+| **Nueva ejecución** | Health: Prometheus OK, Loki OK, Tempo OK. `--tags monitoreo`: ok=8, **changed=0**, failed=0 (idempotente). |
+| **Resultado** | Resuelto. Un cambio futuro en datasources o tableros se aplica sin intervención manual. |
+
+### Verificación de las trazas (`ci/verificar-trazas.sh`)
+
+| Prueba | Resultado |
+|---|---|
+| Agente cargado | `gestor-api` y `gestor-cliente`: `opentelemetry-javaagent - version: 2.34.0` |
+| Despliegue de la app (`--tags app`) | ok=18, failed=0; api, cliente y mariadb *healthy*; humo de login OK |
+| Servicios en Tempo | `gestor-api`, `gestor-cliente` |
+| Traza de `POST /verificarLogin` (92–96 ms; 819 ms la primera, con el arranque en frío) | cliente `POST /verificarLogin` → cliente HTTP `POST` → API `POST /getUsuarioLogin` → `UsuarioRepository.findByCorreo` → Hibernate `SELECT usuario` → JDBC `SELECT dbgestor.usuario` |
+| Correlación log → traza | Logs de la API con `trace_id=9977e359… span_id=d0936482…`, el mismo ID de la traza |
+| Memoria tras activar el agente | API 350/512 MiB (antes, máx. 274 en estrés), cliente 250/512 MiB, Tempo 41/384 MiB; VM con 2,0 GB disponibles |

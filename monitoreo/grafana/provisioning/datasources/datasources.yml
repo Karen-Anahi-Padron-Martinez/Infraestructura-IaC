@@ -18,3 +18,31 @@ datasources:
     access: proxy
     url: http://loki:3100
     editable: false
+    jsonData:
+      # Del log a la traza: el agente OpenTelemetry escribe trace_id en cada línea de log
+      derivedFields:
+        - name: TraceID
+          matcherRegex: "trace_id=(\\w+)"
+          url: "$${__value.raw}"
+          datasourceUid: tempo
+          urlDisplayLabel: Ver traza en Tempo
+
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      # De la traza a sus logs y al mapa de servicios
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-1m"
+        spanEndTimeShift: "1m"
+        filterByTraceID: true
+        customQuery: true
+        query: '{proyecto="gestor"} |= "$${__trace.traceId}"'
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false

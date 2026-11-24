@@ -10,6 +10,19 @@
     - "{{ dir_app }}"
     - "{{ dir_app }}/sql"
 
+- name: Directorio del agente OpenTelemetry
+  ansible.builtin.file:
+    path: "{{ dir_app }}/otel"
+    state: directory
+    mode: "0755"
+
+- name: Descargar agente Java de OpenTelemetry (verificado con SHA-256)
+  ansible.builtin.get_url:
+    url: "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v{{ otel_agente_version }}/opentelemetry-javaagent.jar"
+    dest: "{{ dir_app }}/otel/opentelemetry-javaagent.jar"
+    checksum: "sha256:{{ otel_agente_sha256 }}"
+    mode: "0644"
+
 - name: Copiar scripts SQL de Microservicio-BD
   ansible.builtin.copy:
     src: "{{ bd_sql_origen }}"

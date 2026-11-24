@@ -23,3 +23,7 @@ db_root_password: "{{ vault_db_root_password }}"
 # Monitoreo (Grafana publicado en 3000, limitado por el NSG a cidrs_admin)
 dir_monitoreo: /opt/monitoreo
 grafana_admin_password: "{{ vault_grafana_admin_password }}"
+
+# Trazas: agente Java de OpenTelemetry (versión fijada y verificada por SHA-256)
+otel_agente_version: "2.34.0"
+otel_agente_sha256: "da44154cea128257779c8a782b9651fd7c0c6aa177cd3810f9a867ac8509555d"
