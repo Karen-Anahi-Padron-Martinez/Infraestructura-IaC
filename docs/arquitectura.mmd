@@ -1,0 +1,73 @@
+%% Arquitectura DevOps del Gestor de Proyectos (fuente del diagrama; se renderiza a arquitectura.png/svg)
+%%{init: {"flowchart": {"wrappingWidth": 600, "nodeSpacing": 40, "rankSpacing": 60}, "themeVariables": {"fontSize": "16px"}}}%%
+flowchart LR
+  dev(["Desarrolladora<br/>git push"])
+
+  subgraph GH["GitHub (repositorios)"]
+    direction TB
+    r1["Microservicio1<br/>API Spring Boot"]
+    r2["Microservicio2<br/>Cliente web + frontend"]
+    rbd["Microservicio-BD<br/>scripts SQL"]
+    riac["Infraestructura-IaC<br/>Terraform · Ansible · monitoreo · k6"]
+  end
+
+  subgraph LOCAL["Laptop: Docker Desktop"]
+    direction TB
+    subgraph JK["Jenkins CI/CD"]
+      direction LR
+      s1["Build<br/>Maven · Java 21"] --> s2["Test<br/>Surefire · JaCoCo"] --> s3["SAST<br/>Semgrep"] --> s4["Sonar +<br/>Quality Gate"] --> s5["Imagen<br/>Jib"] --> s6["Desplegar<br/>Ansible"] --> s7["Prueba<br/>de humo"]
+    end
+    sq[("SonarQube")]
+    tf["Terraform<br/>azurerm 4.81"]
+    k6["k6<br/>carga · estrés"]
+  end
+
+  ghcr[("GHCR<br/>ghcr.io · imágenes")]
+
+  subgraph AZ["Azure northcentralus"]
+    direction TB
+    nsg{{"NSG<br/>80 público · 22/3000 solo IP admin"}}
+    subgraph VM["VM Ubuntu B2als_v2"]
+      direction TB
+      subgraph APP["App: compose gestor"]
+        direction LR
+        cli["cliente :8082→80<br/>Thymeleaf + JS"] -- REST --> api["api :8081"] -- JDBC --> db[("MariaDB 11.4")]
+      end
+      subgraph MON["Monitoreo"]
+        direction LR
+        prom["Prometheus<br/>+ 7 alertas"]
+        loki["Loki"]
+        alloy["Alloy"]
+        tempo["Tempo"]
+        nodeexp["node-exporter<br/>cAdvisor"]
+        graf["Grafana :3000<br/>tablero · alertas · trazas"]
+      end
+    end
+  end
+
+  usr(["Usuarios"])
+
+  dev --> GH
+  GH -- checkout --> JK
+  s4 <--> sq
+  s5 -- push --> ghcr
+  riac -. "terraform apply" .-> tf
+  tf -- "aprovisiona: RG, VNet, NSG, IP, VM, apagado 23:00" --> AZ
+  s6 -- "SSH · ansible-playbook --tags app" --> VM
+  ghcr -- "docker pull" --> APP
+  usr -- "HTTP :80" --> nsg --> cli
+  k6 -- "HTTP :80 (solo entorno propio)" --> nsg
+
+  api & cli -- "métricas :8090/actuator" --> prom
+  nodeexp --> prom
+  alloy -- "logs Docker" --> loki
+  api & cli -- "trazas OTLP" --> tempo
+  prom & loki & tempo --> graf
+  graf -. "retroalimentación: alertas, latencia, errores → issue / commit" .-> dev
+
+  classDef nube fill:#e8f1fb,stroke:#0b5cad,color:#0b2545
+  classDef ci fill:#fff4e5,stroke:#c26a00,color:#3d2200
+  classDef obs fill:#eaf7ee,stroke:#1f7a3a,color:#0d3319
+  class AZ,VM,APP nube
+  class JK,s1,s2,s3,s4,s5,s6,s7 ci
+  class MON,prom,loki,alloy,tempo,nodeexp,graf obs
