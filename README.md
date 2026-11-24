@@ -17,7 +17,7 @@ Infraestructura como código y despliegue del Gestor de Proyectos.
 | `terraform/` | Aprovisionamiento en Azure: red, VM, firewall, IP pública | Listo |
 | `ansible/` | Configuración del servidor, despliegue y monitoreo (roles comun, docker, app, monitoreo) | Listo |
 | `monitoreo/` | Prometheus, Grafana, Loki + Alloy, node-exporter, cAdvisor y 7 alertas | Listo |
-| `rendimiento/` | Pruebas de carga con k6 | Pendiente |
+| `rendimiento/` | Pruebas de carga con k6 (humo, carga, estrés), reportes y análisis en `RESULTADOS.md` | Listo |
 
 ## Imágenes de contenedor
 

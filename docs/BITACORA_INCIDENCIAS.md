@@ -200,3 +200,26 @@ Formato: problema → evidencia → diagnóstico → corrección → nueva ejecu
 | Logs en Loki | `count_over_time({proyecto="gestor"}[1h])` = 14 líneas recibidas |
 | Grafana desde la IP del administrador | 200; desde otras IP, bloqueado por el NSG |
 | **Simulacro de caída** (`docker compose stop api`) | 18:00:07 se detiene → 18:00:27 `up(api)=0`, ServicioCaido *pending* → **18:01:28 firing** → 18:01:38 API recuperada → 18:02:18 alerta resuelta. Durante la caída la app pública respondía 500. |
+
+## Fase 6: evaluación del rendimiento (22–24/11/2026)
+
+### INC-14 · `Transfer-Encoding: chunked` duplicado en el login (defecto real)
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | En el primer humo de k6 falló el 100 % de `POST /verificarLogin` (20 % del total de peticiones, *checks* 66,67 %). |
+| **Evidencia** | k6: `status=0 error=too many transfer encodings: ["chunked" "chunked"]`. `curl -i`: el encabezado `transfer-encoding: chunked` aparece dos veces, junto con los `Vary` de CORS de la API. Reporte: `rendimiento/reportes/humo-20261122-1809-FALLIDO-INC14.*`. |
+| **Diagnóstico** | `/verificarLogin`, `/verificarTarea` y `/cambiosTareas` del cliente devolvían el `ResponseEntity` de la API con todos sus encabezados, y Tomcat agregaba su propio `Transfer-Encoding`. Es HTTP inválido: los navegadores y curl lo toleran, pero los clientes estrictos lo rechazan. |
+| **Corrección** | `soloCuerpo()` reenvía solo el código y el cuerpo (Microservicio2 commit `3488515`). Se agregó la prueba `noSeReenvianLosEncabezadosDeLaApi` y la verificación 2b en `ci/humo.sh`; antes del despliegue esta última se ejecutó y **detectó** el defecto en producción. |
+| **Nueva ejecución** | Pipeline App #7: 41 pruebas, SAST OK, Quality Gate OK, `cliente:7` desplegado; la verificación 2b de la prueba de humo pasó. k6 humo: 0 % de errores, 100 % de *checks*. |
+| **Resultado** | Resuelto y protegido por regresiones en las pruebas unitarias y en el pipeline. |
+
+### INC-15 · Errores `EOF` en el escenario de estrés (generador de carga, no aplicación)
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | Estrés (hasta 40 VU): 40 de 8 050 peticiones (0,50 %) con `EOF`; p99 de 3,28 s y máximo de 59,98 s. |
+| **Evidencia** | Los errores se concentran entre 17:02 y 17:03 UTC (escalón 30→40 VU). En el servidor, durante la misma ventana: **0** respuestas 5xx, p99 de 194–207 ms, máximo de 0,52 s, sin reinicios ni OOM y sin errores en los logs de la API ni del cliente. CPU total máxima 53 %. |
+| **Diagnóstico** | Los cortes de conexión ocurren en el camino del generador de carga: red NAT de Docker Desktop en una laptop con 2,7 GB para Docker y conexión doméstica con 40 conexiones simultáneas. No hay correspondencia en el servidor. |
+| **Corrección** | No requiere cambios en la aplicación. Se documentó como limitación del entorno de prueba, con la recomendación de ejecutar k6 desde una VM en la misma región de Azure para estrés de mayor escala. |
+| **Resultado** | El escenario cumplió todos los umbrales (errores 0,50 % < 1 %; p95 de 206 ms). Análisis completo en `rendimiento/RESULTADOS.md`. |

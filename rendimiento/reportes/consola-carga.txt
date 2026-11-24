@@ -1,0 +1,54 @@
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+    http_req_duration{tipo:consulta}
+    ✓ 'p(95)<800' p(95)=109.6ms
+
+    http_req_duration{tipo:login}
+    ✓ 'p(95)<1500' p(95)=205.68ms
+
+    http_req_duration{tipo:pagina}
+    ✓ 'p(95)<800' p(95)=124.4ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 3882    14.270835/s
+    checks_succeeded...: 100.00% 3882 out of 3882
+    checks_failed......: 0.00%   0 out of 3882
+
+    ✓ login: 200
+    ✓ verificarLogin: 200
+    ✓ verificarLogin: usuario válido
+    ✓ proyectos: 200 con datos
+    ✓ tareas: 200
+    ✓ usuarios: 200
+
+    HTTP
+    http_req_duration..............: avg=98.33ms  min=55.95ms  med=76.64ms  p(90)=154.52ms p(95)=169.06ms p(99)=243.22ms max=1.29s   
+      { expected_response:true }...: avg=98.33ms  min=55.95ms  med=76.64ms  p(90)=154.52ms p(95)=169.06ms p(99)=243.22ms max=1.29s   
+      { tipo:consulta }............: avg=83.2ms   min=57.25ms  med=74.73ms  p(90)=97.94ms  p(95)=109.6ms  p(99)=226.4ms  max=1.29s   
+      { tipo:login }...............: avg=160.77ms min=138.49ms med=151.47ms p(90)=185.84ms p(95)=205.68ms p(99)=266.43ms max=511.86ms
+      { tipo:pagina }..............: avg=81.28ms  min=55.95ms  med=70.77ms  p(90)=93.98ms  p(95)=124.4ms  p(99)=213ms    max=1.19s   
+    http_req_failed................: 0.00%  0 out of 3235
+    http_reqs......................: 3235   11.892363/s
+
+    EXECUTION
+    iteration_duration.............: avg=3.47s    min=2.44s    med=3.44s    p(90)=4.26s    p(95)=4.41s    p(99)=4.59s    max=5.38s   
+    iterations.....................: 647    2.378473/s
+    vus............................: 1      min=0         max=10
+    vus_max........................: 10     min=10        max=10
+
+    NETWORK
+    data_received..................: 3.7 MB 13 kB/s
+    data_sent......................: 595 kB 2.2 kB/s
+
+
+

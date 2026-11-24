@@ -1,0 +1,100 @@
+time="2026-11-24T17:02:29Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:30Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:02:31Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:31Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:31Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:32Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:02:32Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/obtenerTareas\": EOF"
+time="2026-11-24T17:02:32Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/obtenerTareas\": EOF"
+time="2026-11-24T17:02:32Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:02:32Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/obtenerTareas\": EOF"
+time="2026-11-24T17:02:32Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/obtenerTareas\": EOF"
+time="2026-11-24T17:02:33Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:33Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:33Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/verificarLogin\": EOF"
+time="2026-11-24T17:02:34Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:34Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:34Z" level=warning msg="Request Failed" error="Get \"http://gestor-717e46.northcentralus.cloudapp.azure.com/login\": dial tcp 40.116.110.191:80: connect: connection refused"
+time="2026-11-24T17:02:35Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/obtenerTareas\": EOF"
+time="2026-11-24T17:02:42Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:42Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:43Z" level=warning msg="Request Failed" error="Get \"http://gestor-717e46.northcentralus.cloudapp.azure.com/login\": dial tcp 40.116.110.191:80: connect: connection refused"
+time="2026-11-24T17:02:46Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:02:50Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/obtenerTareas\": dial tcp 40.116.110.191:80: connect: connection refused"
+time="2026-11-24T17:03:08Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/verificarLogin\": request timeout"
+time="2026-11-24T17:03:11Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": request timeout"
+time="2026-11-24T17:03:12Z" level=warning msg="Request Failed" error="Get \"http://gestor-717e46.northcentralus.cloudapp.azure.com/login\": EOF"
+time="2026-11-24T17:03:13Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:16Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:16Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:16Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/obtenerTareas\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:18Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarUsuarios\": EOF"
+time="2026-11-24T17:03:19Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+time="2026-11-24T17:03:19Z" level=warning msg="Request Failed" error="Post \"http://gestor-717e46.northcentralus.cloudapp.azure.com/consultarProyectos\": EOF"
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=99.56%
+
+    http_req_duration{tipo:consulta}
+    ✓ 'p(95)<800' p(95)=118.9ms
+
+    http_req_duration{tipo:login}
+    ✓ 'p(95)<1500' p(95)=298.46ms
+
+    http_req_duration{tipo:pagina}
+    ✓ 'p(95)<800' p(95)=116.48ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.49%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 9660   26.588142/s
+    checks_succeeded...: 99.56% 9618 out of 9660
+    checks_failed......: 0.43%  42 out of 9660
+
+    ✗ login: 200
+      ↳  99% — ✓ 1607 / ✗ 3
+    ✗ verificarLogin: 200
+      ↳  99% — ✓ 1608 / ✗ 2
+    ✗ verificarLogin: usuario válido
+      ↳  99% — ✓ 1608 / ✗ 2
+    ✗ proyectos: 200 con datos
+      ↳  99% — ✓ 1596 / ✗ 14
+    ✗ tareas: 200
+      ↳  99% — ✓ 1603 / ✗ 7
+    ✗ usuarios: 200
+      ↳  99% — ✓ 1596 / ✗ 14
+
+    HTTP
+    http_req_duration..............: avg=262.58ms min=0s       med=71.66ms  p(90)=163.49ms p(95)=205.81ms p(99)=3.27s max=59.98s
+      { expected_response:true }...: avg=159.83ms min=293.66µs med=71.61ms  p(90)=162.03ms p(95)=201.55ms p(99)=1.13s max=38.37s
+      { tipo:consulta }............: avg=272.88ms min=0s       med=70.62ms  p(90)=84.59ms  p(95)=118.9ms  p(99)=6.35s max=59.98s
+      { tipo:login }...............: avg=268.94ms min=80.89ms  med=156.51ms p(90)=230.21ms p(95)=298.46ms p(99)=2.64s max=59.98s
+      { tipo:pagina }..............: avg=225.3ms  min=0s       med=67.18ms  p(90)=81.26ms  p(95)=116.48ms p(99)=2.83s max=23.12s
+    http_req_failed................: 0.49%  40 out of 8050
+    http_reqs......................: 8050   22.156785/s
+
+    EXECUTION
+    iteration_duration.............: avg=4.71s    min=2.4s     med=3.52s    p(90)=4.36s    p(95)=4.44s    p(99)=1m0s  max=1m15s 
+    iterations.....................: 1610   4.431357/s
+    vus............................: 1      min=0          max=40
+    vus_max........................: 40     min=40         max=40
+
+    NETWORK
+    data_received..................: 9.1 MB 25 kB/s
+    data_sent......................: 1.5 MB 4.1 kB/s
+
+
+

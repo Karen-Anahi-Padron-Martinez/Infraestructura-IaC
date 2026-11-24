@@ -1,0 +1,246 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "1. Abrir login": {
+                "name": "1. Abrir login",
+                "path": "::1. Abrir login",
+                "id": "6c5ae6b3ff4e2b24571b8f5ea6541f73",
+                "groups": {},
+                "checks": {
+                    "login: 200": {
+                        "name": "login: 200",
+                        "path": "::1. Abrir login::login: 200",
+                        "id": "9545a56c311281b54d584226e5f33665",
+                        "passes": 8,
+                        "fails": 0
+                    }
+                }
+            },
+            "2. Iniciar sesión": {
+                "name": "2. Iniciar sesión",
+                "path": "::2. Iniciar sesión",
+                "id": "1bf6bb26a68ac75074ec7c88783230b2",
+                "groups": {},
+                "checks": {
+                    "verificarLogin: 200": {
+                        "passes": 0,
+                        "fails": 8,
+                        "name": "verificarLogin: 200",
+                        "path": "::2. Iniciar sesión::verificarLogin: 200",
+                        "id": "5db1063ff988cd2b5584d8d881353993"
+                    },
+                    "verificarLogin: usuario válido": {
+                        "name": "verificarLogin: usuario válido",
+                        "path": "::2. Iniciar sesión::verificarLogin: usuario válido",
+                        "id": "2a33a0acdd79007687a2eb6ea58a9fc7",
+                        "passes": 0,
+                        "fails": 8
+                    }
+                }
+            },
+            "3. Consultar proyecto": {
+                "checks": {
+                    "proyectos: 200 con datos": {
+                        "passes": 8,
+                        "fails": 0,
+                        "name": "proyectos: 200 con datos",
+                        "path": "::3. Consultar proyecto::proyectos: 200 con datos",
+                        "id": "4c338e4d2f49a5b425cd308006ab61fa"
+                    },
+                    "tareas: 200": {
+                        "path": "::3. Consultar proyecto::tareas: 200",
+                        "id": "0ece20169efc559d8067a51dd51fed44",
+                        "passes": 8,
+                        "fails": 0,
+                        "name": "tareas: 200"
+                    },
+                    "usuarios: 200": {
+                        "name": "usuarios: 200",
+                        "path": "::3. Consultar proyecto::usuarios: 200",
+                        "id": "86120586419ce28f645844c683b0ef54",
+                        "passes": 8,
+                        "fails": 0
+                    }
+                },
+                "name": "3. Consultar proyecto",
+                "path": "::3. Consultar proyecto",
+                "id": "6a2d06fe046332c02b0124296575af0b",
+                "groups": {}
+            }
+        },
+        "checks": {}
+    },
+    "metrics": {
+        "iteration_duration": {
+            "avg": 4053.472392875,
+            "min": 3231.925745,
+            "med": 4233.162306,
+            "p(90)": 4685.7863474,
+            "p(95)": 4833.9845507,
+            "p(99)": 4952.54311334,
+            "max": 4982.182754
+        },
+        "http_req_receiving": {
+            "p(95)": 5.334115099999993,
+            "p(99)": 8.141852369999999,
+            "max": 8.363418,
+            "avg": 0.9510272750000002,
+            "min": 0.126585,
+            "med": 0.34788050000000004,
+            "p(90)": 1.4108110000000003
+        },
+        "http_req_failed": {
+            "passes": 8,
+            "fails": 32,
+            "thresholds": {
+                "rate<0.01": true
+            },
+            "value": 0.2
+        },
+        "http_req_sending": {
+            "min": 0.023134,
+            "med": 0.08607200000000001,
+            "p(90)": 0.13799020000000017,
+            "p(95)": 0.2815099499999995,
+            "p(99)": 0.56828642,
+            "max": 0.646997,
+            "avg": 0.10970594999999998
+        },
+        "group_duration": {
+            "avg": 281.90494791666674,
+            "min": 77.593224,
+            "med": 208.847823,
+            "p(90)": 526.8839846,
+            "p(95)": 589.4924602499999,
+            "p(99)": 617.86451123,
+            "max": 623.757916
+        },
+        "http_req_waiting": {
+            "max": 330.28253,
+            "avg": 133.95677605000003,
+            "min": 75.952753,
+            "med": 103.860585,
+            "p(90)": 202.75235450000002,
+            "p(95)": 214.98480649999988,
+            "p(99)": 299.55760420999997
+        },
+        "data_sent": {
+            "count": 7352,
+            "rate": 226.63666393131092
+        },
+        "checks": {
+            "passes": 32,
+            "fails": 16,
+            "thresholds": {
+                "rate>0.99": true
+            },
+            "value": 0.6666666666666666
+        },
+        "vus_max": {
+            "value": 1,
+            "min": 1,
+            "max": 1
+        },
+        "http_req_duration{expected_response:true}": {
+            "min": 77.265551,
+            "med": 102.26557,
+            "p(90)": 190.3775076000001,
+            "p(95)": 204.01338915000002,
+            "p(99)": 237.50769153000005,
+            "max": 252.124544,
+            "avg": 120.03687981250002
+        },
+        "http_req_duration{tipo:pagina}": {
+            "p(90)": 217.8969072,
+            "p(95)": 235.01072559999997,
+            "p(99)": 248.70178031999998,
+            "max": 252.124544,
+            "avg": 130.66908375,
+            "min": 77.265551,
+            "med": 99.215947,
+            "thresholds": {
+                "p(95)<800": false
+            }
+        },
+        "http_req_blocked": {
+            "p(95)": 188.94584409999996,
+            "p(99)": 225.34159531999995,
+            "max": 241.873193,
+            "avg": 33.676522675,
+            "min": 0.007056,
+            "med": 0.0121935,
+            "p(90)": 134.94215450000002
+        },
+        "vus": {
+            "value": 1,
+            "min": 1,
+            "max": 1
+        },
+        "data_received": {
+            "count": 46096,
+            "rate": 1420.9798232559451
+        },
+        "http_req_duration{tipo:consulta}": {
+            "min": 83.767906,
+            "med": 102.26557,
+            "p(90)": 151.6703205,
+            "p(95)": 188.34138839999991,
+            "p(99)": 202.55296497,
+            "max": 204.973407,
+            "avg": 116.49281183333335,
+            "thresholds": {
+                "p(95)<800": false
+            }
+        },
+        "http_req_duration{tipo:login}": {
+            "p(99)": 322.68734250999995,
+            "max": 330.892449,
+            "avg": 194.94002712499997,
+            "min": 152.753232,
+            "med": 170.23603200000002,
+            "p(90)": 248.84138409999997,
+            "p(95)": 289.8669165499999,
+            "thresholds": {
+                "p(95)<1500": false
+            }
+        },
+        "http_req_duration": {
+            "max": 330.892449,
+            "avg": 135.017509275,
+            "min": 77.265551,
+            "med": 104.174922,
+            "p(90)": 203.40246870000001,
+            "p(95)": 215.5990370999999,
+            "p(99)": 300.17296604999996
+        },
+        "http_req_tls_handshaking": {
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0,
+            "max": 0,
+            "avg": 0,
+            "min": 0
+        },
+        "iterations": {
+            "count": 8,
+            "rate": 0.24661225672612724
+        },
+        "http_reqs": {
+            "count": 40,
+            "rate": 1.2330612836306363
+        },
+        "http_req_connecting": {
+            "p(99)": 194.4943315,
+            "max": 198.844177,
+            "avg": 29.648587250000002,
+            "min": 0,
+            "med": 0,
+            "p(90)": 130.2930947,
+            "p(95)": 138.06648139999984
+        }
+    }
+}
