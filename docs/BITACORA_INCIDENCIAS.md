@@ -320,3 +320,4 @@ Jenkins y SonarQube pasaron de la laptop a una segunda VM, `vm-gestor-ci` (Stand
 | App-Microservicio2-Cliente **#8** | SUCCESS en 3 min 22 s: 41 pruebas, SAST OK, Quality Gate OK, `cliente:8` desplegado, humo OK |
 | Registro de `pollSCM` | Segunda corrida (BD #4, Backend #5, Frontend #10, App #9: todos SUCCESS). Los 4 jobs quedan con `<spec>H/5 * * * *</spec>` |
 | **Disparo automático con un push** | Commit `dcae127` en Microservicio-BD a las 19:52:51 UTC, sin lanzar nada a mano → **BD #5 "Started by an SCM change"** a las 19:54:09 (78 s después): 42 pruebas, Quality Gate OK, SUCCESS |
+| **Pipelines con el Quality Gate estricto** (después de INC-20) | BD #6, Backend #6, Frontend #11, App #10: todos SUCCESS con "Quality gate is 'OK'" en "Sonar way + codigo global". Medidas en Sonar: API cobertura 100 %, frontend 97.8 %, **hotspots revisados 100 %** en ambos, 0 bugs, 0 vulnerabilidades |
