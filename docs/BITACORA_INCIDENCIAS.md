@@ -249,3 +249,61 @@ Agente Java de OpenTelemetry 2.34.0, descargado por Ansible con su SHA-256 verif
 | Traza de `POST /verificarLogin` (92–96 ms; 819 ms la primera, con el arranque en frío) | cliente `POST /verificarLogin` → cliente HTTP `POST` → API `POST /getUsuarioLogin` → `UsuarioRepository.findByCorreo` → Hibernate `SELECT usuario` → JDBC `SELECT dbgestor.usuario` |
 | Correlación log → traza | Logs de la API con `trace_id=9977e359… span_id=d0936482…`, el mismo ID de la traza |
 | Memoria tras activar el agente | API 350/512 MiB (antes, máx. 274 en estrés), cliente 250/512 MiB, Tempo 41/384 MiB; VM con 2,0 GB disponibles |
+
+## Extra: Jenkins y SonarQube en Azure (24–25/11/2026)
+
+Jenkins y SonarQube pasaron de la laptop a una segunda VM, `vm-gestor-ci` (Standard_B2as_v2: 2 vCPU y 8 GB), creada con Terraform (`terraform/ci.tf`) y configurada con el rol de Ansible `ci`. Comparte la VNet con la aplicación, así que Jenkins despliega por la red privada (10.20.1.4). Jenkins (8080) y SonarQube (9000) solo se abren a `cidrs_admin`.
+
+**Antes de crear la VM:** se verificó el cupo (2 de 6 vCPU regionales en uso), el precio oficial (0.0752 USD/h en Linux) y el `terraform plan`: 5 por crear, 1 por cambiar (NSG) y ninguna destrucción en Azure.
+
+### INC-17 · Python instalado a mano dentro del contenedor de Jenkins local
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | Al preparar la migración, la imagen oficial `jenkins/jenkins` no trae `python3-venv`, que necesitan `ci/semgrep.sh` y `ci/desplegar.sh`. |
+| **Evidencia** | `docker diff jenkins` en local: `A /usr/lib/python3.13/...`. Python se había instalado dentro del contenedor y no estaba en ninguna definición versionada. |
+| **Diagnóstico** | Configuración no reproducible: si el contenedor se recreaba, el SAST y el despliegue dejaban de funcionar. |
+| **Corrección** | `roles/ci/templates/Dockerfile.jenkins.j2`: `FROM jenkins/jenkins:2.580.1-lts-jdk21` más `python3 python3-venv openssh-client`. Ansible construye la imagen. |
+| **Nueva ejecución** | La verificación del rol `ci` (`python3 -c "import venv"`) da OK. Los pipelines con SAST y despliegue pasaron en la nube. |
+| **Resultado** | Las herramientas de los pipelines quedaron versionadas como código. |
+
+### INC-18 · IP pública dinámica del administrador
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | El SSH a la VM de CI dejó de responder (`Connection timed out`) a mitad de la migración. |
+| **Evidencia** | `curl https://api.ipify.org`: la IP pasó de 187.140.67.84 a 187.140.41.208 en menos de una hora, en la misma red doméstica. |
+| **Diagnóstico** | El proveedor asigna IP dinámicas; el NSG solo admite las de `cidrs_admin`. |
+| **Corrección** | IP nueva en `cidrs_admin` y `terraform apply` (0 por crear, 1 por cambiar, 0 por destruir). Se mantiene `/32` en lugar de abrir el rango del proveedor (`/16`), por seguridad. |
+| **Resultado** | Acceso restablecido en segundos. Procedimiento documentado en la guía de comandos. |
+
+### INC-19 · El plan de Terraform guardado no estaba en `.gitignore`
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | `git status` mostró `terraform/tfplan` como archivo nuevo sin seguimiento. |
+| **Diagnóstico** | La regla era `*.tfplan`, pero el archivo se llama `tfplan`, sin extensión. Un plan puede contener valores de variables (ID de suscripción, IP). `git log --all -- terraform/tfplan` confirmó que nunca se subió. |
+| **Corrección** | Regla `tfplan` agregada a `.gitignore`; `git check-ignore` lo confirma. |
+| **Resultado** | Prevenido antes de cualquier commit. |
+
+### Decisiones de la migración
+
+| Tema | Decisión |
+|---|---|
+| Jenkins | Se migró `jenkins_home`: jobs, historial de builds, plugins, herramientas, credenciales y su llave de cifrado. Se excluyeron `workspace`, cachés y los artefactos archivados de builds anteriores, porque se regeneran. Respaldo de 596 MB (era 3.5 GB) enviado por `scp`; la restauración la hace Ansible solo si el volumen está vacío. |
+| SonarQube | El local usaba la base embebida H2, que la propia herramienta marca "solo para evaluación", y no tenía volúmenes. En la nube corre sobre **PostgreSQL 16.16**. Ansible cambia la contraseña inicial `admin/admin` por la de Vault y crea el webhook del Quality Gate hacia Jenkins. Los proyectos se recrearon al reanalizar. |
+| Secretos nuevos | `group_vars/ci/vault.yml` (AES256) generado por `scripts/generar-vault-ci.sh`. El texto plano solo existe en el contenedor efímero. El token de Sonar y la credencial `mariadb-ci` los actualizó la administradora en Jenkins. |
+| Memoria | Jenkins con 1 ejecutor (evita builds en paralelo, INC-12), límite de 3.5 GB; SonarQube 2.5 GB; swap de 4 GB. |
+| Disparo automático | `triggers { pollSCM('H/5 * * * *') }` en los 4 Jenkinsfiles. Los checkouts auxiliares usan `poll: false` para que solo el repo propio dispare cada pipeline. |
+
+### Verificación de CI en la nube
+
+| Prueba | Resultado |
+|---|---|
+| Rol `ci` | ok=24, failed=0. Segunda corrida: **changed=0** (después de corregir el `changed_when` de `compose up --build`, que siempre imprime "Built") |
+| Servicios | `jenkins`, `sonarqube`, `sonar-db` (healthy), `mariadb-container` (healthy). Memoria: 5.2 GB disponibles de 8 |
+| Jenkins → VM de la app por la red privada | Puerto 22 en 10.20.1.4 alcanzable desde el contenedor de Jenkins |
+| Backend-Microservicio1-API **#4** | SUCCESS en 2 min 51 s (en local, 8 min 52 s): 121 pruebas, SAST OK, Quality Gate OK, `api:4` desplegado por SSH a 10.20.1.4, humo OK |
+| BD-dbgestor **#3** | SUCCESS en 43 s: 42 pruebas (incluida la de integración con el MariaDB de pruebas), 0 hallazgos SAST, Quality Gate OK |
+| Frontend-Microservicio2 **#9** | SUCCESS en 1 min 19 s: 66 pruebas, SAST OK, Quality Gate OK |
+| App-Microservicio2-Cliente **#8** | SUCCESS en 3 min 22 s: 41 pruebas, SAST OK, Quality Gate OK, `cliente:8` desplegado, humo OK |
