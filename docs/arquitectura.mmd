@@ -11,14 +11,10 @@ flowchart LR
     riac["Infraestructura-IaC<br/>Terraform · Ansible · monitoreo · k6"]
   end
 
-  subgraph LOCAL["Laptop: Docker Desktop"]
+  subgraph LOCAL["Laptop"]
     direction TB
-    subgraph JK["Jenkins CI/CD"]
-      direction LR
-      s1["Build<br/>Maven · Java 21"] --> s2["Test<br/>Surefire · JaCoCo"] --> s3["SAST<br/>Semgrep"] --> s4["Sonar +<br/>Quality Gate"] --> s5["Imagen<br/>Jib"] --> s6["Desplegar<br/>Ansible"] --> s7["Prueba<br/>de humo"]
-    end
-    sq[("SonarQube")]
     tf["Terraform<br/>azurerm 4.81"]
+    ans["Ansible<br/>(contenedor)"]
     k6["k6<br/>carga · estrés"]
   end
 
@@ -26,8 +22,17 @@ flowchart LR
 
   subgraph AZ["Azure northcentralus"]
     direction TB
-    nsg{{"NSG<br/>80 público · 22/3000 solo IP admin"}}
-    subgraph VM["VM Ubuntu B2als_v2"]
+    nsg{{"NSG<br/>80 público · 22/3000/8080/9000 solo IP admin"}}
+    subgraph VMCI["VM CI B2as_v2"]
+      direction TB
+      subgraph JK["Jenkins CI/CD"]
+        direction LR
+        s1["Build<br/>Maven · Java 21"] --> s2["Test<br/>Surefire · JaCoCo"] --> s3["SAST<br/>Semgrep"] --> s4["Sonar +<br/>Quality Gate"] --> s5["Imagen<br/>Jib"] --> s6["Desplegar<br/>Ansible"] --> s7["Prueba<br/>de humo"]
+      end
+      sq[("SonarQube<br/>+ PostgreSQL")]
+      mdbci[("MariaDB<br/>de pruebas")]
+    end
+    subgraph VM["VM App B2als_v2"]
       direction TB
       subgraph APP["App: compose gestor"]
         direction LR
@@ -48,15 +53,17 @@ flowchart LR
   usr(["Usuarios"])
 
   dev --> GH
-  GH -- checkout --> JK
+  GH -- "checkout (pollSCM)" --> JK
   s4 <--> sq
+  s2 --> mdbci
   s5 -- push --> ghcr
   riac -. "terraform apply" .-> tf
-  tf -- "aprovisiona: RG, VNet, NSG, IP, VM, apagado 23:00" --> AZ
-  s6 -- "SSH · ansible-playbook --tags app" --> VM
+  tf -- "crea 2 VM, red, NSG" --> AZ
+  ans -- "SSH site.yml" --> nsg
+  s6 -- "SSH por red privada 10.20.1.0/24" --> VM
   ghcr -- "docker pull" --> APP
   usr -- "HTTP :80" --> nsg --> cli
-  k6 -- "HTTP :80 (solo entorno propio)" --> nsg
+  k6 -- "carga HTTP" --> nsg
 
   api & cli -- "métricas :8090/actuator" --> prom
   nodeexp --> prom
@@ -68,6 +75,6 @@ flowchart LR
   classDef nube fill:#e8f1fb,stroke:#0b5cad,color:#0b2545
   classDef ci fill:#fff4e5,stroke:#c26a00,color:#3d2200
   classDef obs fill:#eaf7ee,stroke:#1f7a3a,color:#0d3319
-  class AZ,VM,APP nube
+  class AZ,VM,APP,VMCI nube
   class JK,s1,s2,s3,s4,s5,s6,s7 ci
   class MON,prom,loki,alloy,tempo,nodeexp,graf obs

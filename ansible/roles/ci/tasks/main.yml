@@ -76,6 +76,8 @@
       tar xzf /r/jenkins_home.tgz -C /j
       # URL pública de Jenkins (los enlaces y el webhook de Sonar la usan)
       sed -i "s#<jenkinsUrl>.*</jenkinsUrl>#<jenkinsUrl>{{ url_jenkins }}</jenkinsUrl>#" /j/jenkins.model.JenkinsLocationConfiguration.xml
+      # Un solo ejecutor: dos builds en paralelo agotan la memoria (INC-12); los demás esperan en cola
+      sed -i "s#<numExecutors>[0-9]*</numExecutors>#<numExecutors>1</numExecutors>#" /j/config.xml
       chown -R 1000:1000 /j
       echo "restaurado"'
   args:
