@@ -286,6 +286,17 @@ Jenkins y SonarQube pasaron de la laptop a una segunda VM, `vm-gestor-ci` (Stand
 | **Corrección** | Regla `tfplan` agregada a `.gitignore`; `git check-ignore` lo confirma. |
 | **Resultado** | Prevenido antes de cualquier commit. |
 
+### INC-20 · El SonarQube nuevo no tenía el Quality Gate estricto ni las revisiones de hotspots
+
+| Campo | Detalle |
+|---|---|
+| **Problema** | Después de migrar, SonarQube mostraba **"Hotspots Reviewed 0.0 % (E)"** en la API y el frontend (en local era 100 %, A), y aun así el Quality Gate pasaba. |
+| **Evidencia** | Captura de *Projects* en el Sonar de la nube. `api/qualitygates/list`: solo existía *Sonar way*. `api/hotspots/search?status=TO_REVIEW`: 7 de la regla `java:S3752` en la API y 1 de `javascript:S2245` en el frontend. |
+| **Diagnóstico** | El gate **"Sonar way + codigo global"** de la Unidad II (cobertura global ≥ 80 %, bugs = 0, vulnerabilidades = 0, hotspots revisados = 100 %) y las revisiones de hotspots vivían solo en la base H2 del Sonar local, que no se migró. El Sonar nuevo aplicaba *Sonar way*, que en el primer análisis no evalúa nada: **los umbrales habían bajado sin que nadie lo decidiera.** |
+| **Corrección** | 1) El rol `ci` crea el gate (copia de *Sonar way* más las 4 condiciones globales, definidas en `group_vars/ci/vars.yml`), lo deja como predeterminado y verifica sus condiciones. 2) `ansible/revisar-hotspots.yml` vuelve a marcar Safe, **con la justificación escrita de la Unidad II**, solo las reglas ya revisadas (`S3752`, `S2245`); si aparece un hotspot de otra regla, el playbook falla para exigir revisión humana. |
+| **Nueva ejecución** | Rol `ci`: gate creado y predeterminado; segunda corrida changed=0. `revisar-hotspots.yml`: 8 hotspots marcados Safe y "Sin hotspots pendientes fuera de los ya justificados". Los 4 pipelines se reejecutaron con el gate estricto (resultado abajo). |
+| **Resultado** | Restaurados los umbrales de la Unidad II, ahora como código: un Sonar nuevo nace con el mismo gate. |
+
 ### Decisiones de la migración
 
 | Tema | Decisión |

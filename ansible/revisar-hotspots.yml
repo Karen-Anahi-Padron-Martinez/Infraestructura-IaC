@@ -1,0 +1,62 @@
+# Aplica en SonarQube las revisiones de Security Hotspots ya hechas y justificadas en la Unidad II
+# (entrega/04_TABLA_VULNERABILIDADES.md, fila 7, y la tabla de hotspots).
+# Solo marca las reglas listadas en "revisiones". Cualquier hotspot de otra regla queda pendiente y el
+# playbook falla: un hallazgo nuevo requiere revisión humana, no se aprueba en automático.
+# Uso: ansible-playbook revisar-hotspots.yml
+- name: Revisar Security Hotspots conocidos
+  hosts: ci
+  gather_facts: false
+  vars:
+    sonar: http://localhost:9000
+    proyectos: [microservicio1-api-gestor, microservicio2-cliente, microservicio2-frontend, microservicio-bd]
+    revisiones:
+      "java:S3752": >-
+        Safe: endpoints de solo lectura (buscar*, getTarea, getComentario) que se llaman de servidor a servidor
+        desde el cliente web. La API no usa cookies ni sesión, así que no hay CSRF posible, y el CORS está
+        restringido a la URL del cliente. Revisado en la Unidad II.
+      "javascript:S2245": >-
+        Safe: Math.random() solo elige el color del avatar en la interfaz. No se usa para tokens, contraseñas
+        ni ningún valor de seguridad. Revisado en la Unidad II.
+  tasks:
+    - name: Hotspots pendientes por proyecto
+      ansible.builtin.uri:
+        url: "{{ sonar }}/api/hotspots/search?projectKey={{ item }}&status=TO_REVIEW&ps=500"
+        user: admin
+        password: "{{ sonar_admin_password }}"
+        force_basic_auth: true
+        return_content: true
+      loop: "{{ proyectos }}"
+      register: busqueda
+      no_log: true
+
+    - name: Reunir los hotspots pendientes
+      ansible.builtin.set_fact:
+        pendientes: "{{ busqueda.results | map(attribute='json') | map(attribute='hotspots') | flatten }}"
+
+    - name: Marcar como Safe, con su justificación, los hotspots ya revisados
+      ansible.builtin.uri:
+        url: "{{ sonar }}/api/hotspots/change_status"
+        method: POST
+        user: admin
+        password: "{{ sonar_admin_password }}"
+        force_basic_auth: true
+        body_format: form-urlencoded
+        body:
+          hotspot: "{{ item.key }}"
+          status: REVIEWED
+          resolution: SAFE
+          comment: "{{ revisiones[item.ruleKey] }}"
+        status_code: 204
+      loop: "{{ pendientes | selectattr('ruleKey', 'in', revisiones.keys() | list) | list }}"
+      loop_control:
+        label: "{{ item.ruleKey }} {{ item.component | regex_replace('^[^:]*:', '') }}:{{ item.line | default('-') }}"
+      changed_when: true
+      no_log: false
+
+    - name: No deben quedar hotspots sin revisar de reglas desconocidas
+      ansible.builtin.assert:
+        that: nuevos | length == 0
+        fail_msg: "Hotspots nuevos que requieren revisión humana: {{ nuevos | map(attribute='ruleKey') | list }}"
+        success_msg: "Sin hotspots pendientes fuera de los ya justificados"
+      vars:
+        nuevos: "{{ pendientes | rejectattr('ruleKey', 'in', revisiones.keys() | list) | list }}"

@@ -155,6 +155,87 @@
   changed_when: true
   no_log: true
 
+- name: Quality Gates existentes en SonarQube
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/qualitygates/list
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: gates
+  no_log: true
+
+- name: Estado del Quality Gate del proyecto
+  ansible.builtin.set_fact:
+    gate_existe: "{{ gate_proyecto | length > 0 }}"
+    gate_es_default: "{{ (gate_proyecto | first | default({})).isDefault | default(false) }}"
+  vars:
+    gate_proyecto: "{{ gates.json.qualitygates | selectattr('name', 'equalto', sonar_quality_gate) | list }}"
+
+- name: Crear el Quality Gate copiando Sonar way
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/qualitygates/copy
+    method: POST
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      sourceName: Sonar way
+      name: "{{ sonar_quality_gate }}"
+  when: not gate_existe
+  changed_when: true
+  no_log: true
+
+- name: Agregar las condiciones sobre el código global
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/qualitygates/create_condition
+    method: POST
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      gateName: "{{ sonar_quality_gate }}"
+      metric: "{{ item.metric }}"
+      op: "{{ item.op }}"
+      error: "{{ item.error }}"
+  loop: "{{ sonar_condiciones_globales }}"
+  loop_control:
+    label: "{{ item.metric }} {{ item.op }} {{ item.error }}"
+  when: not gate_existe
+  changed_when: true
+  no_log: true
+
+- name: Quality Gate como predeterminado para todos los proyectos
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/qualitygates/set_as_default
+    method: POST
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      name: "{{ sonar_quality_gate }}"
+    status_code: 204
+  when: not gate_existe or not gate_es_default
+  changed_when: true
+  no_log: true
+
+- name: Verificar las condiciones del Quality Gate
+  ansible.builtin.uri:
+    url: "http://localhost:9000/api/qualitygates/show?name={{ sonar_quality_gate | urlencode }}"
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: gate_final
+  failed_when: >-
+    (gate_final.json.conditions | map(attribute='metric') | list
+     | intersect(sonar_condiciones_globales | map(attribute='metric') | list) | length)
+    != (sonar_condiciones_globales | length)
+  no_log: true
+
 - name: Esperar a que Jenkins responda
   ansible.builtin.uri:
     url: http://localhost:8080/login
