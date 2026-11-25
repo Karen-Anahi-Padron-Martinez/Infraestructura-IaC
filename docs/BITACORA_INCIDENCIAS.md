@@ -307,3 +307,5 @@ Jenkins y SonarQube pasaron de la laptop a una segunda VM, `vm-gestor-ci` (Stand
 | BD-dbgestor **#3** | SUCCESS en 43 s: 42 pruebas (incluida la de integración con el MariaDB de pruebas), 0 hallazgos SAST, Quality Gate OK |
 | Frontend-Microservicio2 **#9** | SUCCESS en 1 min 19 s: 66 pruebas, SAST OK, Quality Gate OK |
 | App-Microservicio2-Cliente **#8** | SUCCESS en 3 min 22 s: 41 pruebas, SAST OK, Quality Gate OK, `cliente:8` desplegado, humo OK |
+| Registro de `pollSCM` | Segunda corrida (BD #4, Backend #5, Frontend #10, App #9: todos SUCCESS). Los 4 jobs quedan con `<spec>H/5 * * * *</spec>` |
+| **Disparo automático con un push** | Commit `dcae127` en Microservicio-BD a las 19:52:51 UTC, sin lanzar nada a mano → **BD #5 "Started by an SCM change"** a las 19:54:09 (78 s después): 42 pruebas, Quality Gate OK, SUCCESS |
