@@ -1,0 +1,94 @@
+# Integración continua del Gestor de Proyectos: Jenkins + SonarQube (PostgreSQL) + MariaDB de pruebas.
+# Generado por Ansible (rol ci). Los nombres de contenedor son los mismos que en local (red devops-net),
+# así la configuración migrada de Jenkins (http://sonarqube:9000, mariadb-container) sigue siendo válida.
+name: ci
+
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    image: gestor-jenkins:2.580.1
+    container_name: jenkins
+    restart: unless-stopped
+    environment:
+      JAVA_OPTS: "-Xmx1g"
+      # Los despliegues van a la VM de la aplicación por la red privada (ci/desplegar.sh)
+      VM_SSH_HOST: "{{ ip_privada_app }}"
+    ports:
+      - "8080:8080"   # limitado a cidrs_admin por el NSG
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    mem_limit: 3584m   # Jenkins + Maven + analizador JS de Sonar + Semgrep
+    networks: [devops-net]
+
+  sonarqube:
+    image: {{ sonarqube_imagen }}
+    container_name: sonarqube
+    restart: unless-stopped
+    depends_on: [sonar-db]
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD}
+      SONAR_WEB_JAVAOPTS: "-Xmx512m -Xms128m"
+      SONAR_CE_JAVAOPTS: "-Xmx768m -Xms128m"
+      SONAR_SEARCH_JAVAOPTS: "-Xmx512m -Xms512m -XX:MaxDirectMemorySize=256m"
+    ports:
+      - "9000:9000"   # limitado a cidrs_admin por el NSG
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    ulimits:
+      nofile: {soft: 131072, hard: 131072}
+      nproc: {soft: 8192, hard: 8192}
+    mem_limit: 2560m
+    networks: [devops-net]
+
+  sonar-db:
+    image: {{ postgres_imagen }}
+    container_name: sonar-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD}
+      POSTGRES_DB: sonar
+    volumes:
+      - sonar_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonar"]
+      interval: 10s
+      retries: 10
+    mem_limit: 384m
+    networks: [devops-net]
+
+  mariadb-container:
+    # BD temporal para las pruebas del pipeline BD-dbgestor (usuario ci_bd limitado a dbgestor_ci_*)
+    image: {{ mariadb_ci_imagen }}
+    container_name: mariadb-container
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - mariadb_ci:/var/lib/mysql
+      - ./mariadb-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      retries: 10
+    mem_limit: 384m
+    networks: [devops-net]
+
+volumes:
+  jenkins_home:
+    name: jenkins_home
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  sonar_db:
+  mariadb_ci:
+
+networks:
+  devops-net:
+    name: devops-net

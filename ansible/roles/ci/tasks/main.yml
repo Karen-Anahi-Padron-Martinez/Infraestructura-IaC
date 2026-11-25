@@ -1,0 +1,197 @@
+# Jenkins + SonarQube (PostgreSQL) + MariaDB de pruebas en la VM de CI, con verificaciones
+- name: Crear archivo de swap (respaldo de memoria para los builds)
+  ansible.builtin.command:
+    cmd: "fallocate -l {{ swap_gb }}G /swapfile"
+    creates: /swapfile
+  register: swap_creado
+
+- name: Formatear y activar el swap
+  ansible.builtin.shell: chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  when: swap_creado is changed
+  changed_when: true
+
+- name: Swap persistente al reiniciar
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/swapfile none swap sw 0 0"
+
+- name: Límites del kernel para Elasticsearch (SonarQube)
+  ansible.builtin.template:
+    src: 99-sonarqube.conf.j2
+    dest: /etc/sysctl.d/99-sonarqube.conf
+    mode: "0644"
+  notify: Aplicar sysctl
+
+- name: Aplicar sysctl antes de levantar SonarQube
+  ansible.builtin.meta: flush_handlers
+
+- name: Directorios de CI
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ dir_ci }}"
+    - "{{ dir_ci }}/mariadb-init"
+    - "{{ dir_ci }}/respaldo"
+
+- name: Dockerfile de Jenkins y docker-compose.yml
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ dir_ci }}/{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - { src: Dockerfile.jenkins.j2, dest: Dockerfile.jenkins }
+    - { src: docker-compose.yml.j2, dest: docker-compose.yml }
+
+- name: Generar .env con los secretos de Ansible Vault (solo root)
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ dir_ci }}/.env"
+    mode: "0600"
+  no_log: true
+
+- name: Script de inicialización de MariaDB con el usuario de CI (legible solo por mysql, uid 999)
+  ansible.builtin.template:
+    src: 01_usuario_ci.sql.j2
+    dest: "{{ dir_ci }}/mariadb-init/01_usuario_ci.sql"
+    owner: "999"
+    group: "999"
+    mode: "0600"
+  no_log: true
+
+# Migración: si hay un respaldo de jenkins_home y el volumen aún está vacío, se restaura antes del
+# primer arranque. Sin respaldo, Jenkins arranca con su asistente de instalación (protegido con clave).
+- name: Buscar respaldo de jenkins_home
+  ansible.builtin.stat:
+    path: "{{ dir_ci }}/respaldo/jenkins_home.tgz"
+  register: respaldo
+
+- name: Restaurar jenkins_home desde el respaldo (solo si el volumen está vacío)
+  ansible.builtin.shell: |
+    set -e
+    docker volume create jenkins_home >/dev/null
+    docker run --rm -v jenkins_home:/j -v {{ dir_ci }}/respaldo:/r:ro alpine:3.22 sh -c '
+      if [ -e /j/config.xml ]; then echo "ya-restaurado"; exit 0; fi
+      tar xzf /r/jenkins_home.tgz -C /j
+      # URL pública de Jenkins (los enlaces y el webhook de Sonar la usan)
+      sed -i "s#<jenkinsUrl>.*</jenkinsUrl>#<jenkinsUrl>{{ url_jenkins }}</jenkinsUrl>#" /j/jenkins.model.JenkinsLocationConfiguration.xml
+      chown -R 1000:1000 /j
+      echo "restaurado"'
+  args:
+    executable: /bin/bash
+  when: respaldo.stat.exists
+  register: restauracion
+  changed_when: "'restaurado' in restauracion.stdout and 'ya-restaurado' not in restauracion.stdout"
+
+- name: Construir la imagen de Jenkins y levantar los servicios
+  ansible.builtin.command:
+    cmd: docker compose up -d --build --remove-orphans
+    chdir: "{{ dir_ci }}"
+  register: ci_up
+  # "Built" sale siempre aunque use la caché; si la imagen cambia, el contenedor aparece como Recreated
+  changed_when: ci_up.stderr is search('Started|Recreated|Created')
+
+- name: Esperar a que SonarQube esté UP (Elasticsearch tarda en arrancar)
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/system/status
+    return_content: true
+  register: sonar_estado
+  until: sonar_estado.status == 200 and sonar_estado.json.status == 'UP'
+  retries: 40
+  delay: 10
+
+- name: Comprobar la contraseña de administrador de SonarQube
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/authentication/validate
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: sonar_auth
+  no_log: true
+
+- name: Reemplazar la contraseña inicial admin/admin por la de Ansible Vault
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/users/change_password
+    method: POST
+    user: admin
+    password: admin
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      login: admin
+      previousPassword: admin
+      password: "{{ sonar_admin_password }}"
+    status_code: 204
+  when: not sonar_auth.json.valid
+  changed_when: true
+  no_log: true
+
+- name: Webhooks configurados en SonarQube
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/webhooks/list
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: sonar_webhooks
+  no_log: true
+
+- name: Webhook del Quality Gate hacia Jenkins (red interna devops-net)
+  ansible.builtin.uri:
+    url: http://localhost:9000/api/webhooks/create
+    method: POST
+    user: admin
+    password: "{{ sonar_admin_password }}"
+    force_basic_auth: true
+    body_format: form-urlencoded
+    body:
+      name: Jenkins
+      url: http://jenkins:8080/sonarqube-webhook/
+  when: sonar_webhooks.json.webhooks | selectattr('name', 'equalto', 'Jenkins') | list | length == 0
+  changed_when: true
+  no_log: true
+
+- name: Esperar a que Jenkins responda
+  ansible.builtin.uri:
+    url: http://localhost:8080/login
+    status_code: 200
+  register: jenkins_estado
+  until: jenkins_estado.status == 200
+  retries: 30
+  delay: 10
+
+- name: MariaDB de pruebas sano
+  ansible.builtin.command:
+    cmd: docker compose ps mariadb-container --format "{{ '{{' }}.Health{{ '}}' }}"
+    chdir: "{{ dir_ci }}"
+  register: mariadb_salud
+  until: mariadb_salud.stdout == 'healthy'
+  retries: 12
+  delay: 10
+  changed_when: false
+
+- name: Jenkins tiene las herramientas de los pipelines (Python con venv)
+  ansible.builtin.command: docker exec jenkins python3 -c "import venv; print('venv OK')"
+  changed_when: false
+
+- name: Jenkins llega a la VM de la aplicación por la red privada (SSH)
+  ansible.builtin.command:
+    argv: [docker, exec, jenkins, timeout, "5", bash, -c, "</dev/tcp/{{ ip_privada_app }}/22"]
+  changed_when: false
+
+- name: Estado de CI
+  ansible.builtin.command:
+    cmd: docker compose ps --format "{{ '{{' }}.Service{{ '}}' }}={{ '{{' }}.Status{{ '}}' }}"
+    chdir: "{{ dir_ci }}"
+  register: ci_estado
+  changed_when: false
+
+- name: Resultado
+  ansible.builtin.debug:
+    msg:
+      - "Servicios: {{ ci_estado.stdout_lines | join(', ') }}"
+      - "Jenkins: {{ url_jenkins }}"
+      - "SonarQube: http://{{ fqdn_publico }}:9000"
+      - "Restauración de jenkins_home: {{ restauracion.stdout | default('sin respaldo') }}"

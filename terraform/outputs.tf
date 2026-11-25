@@ -22,3 +22,18 @@ output "ssh" {
   description = "Comando para conectarse por SSH."
   value       = "ssh -i ${var.llave_privada_ssh} ${var.usuario_admin}@${azurerm_public_ip.pip.ip_address}"
 }
+
+output "url_jenkins" {
+  description = "URL de Jenkins en la VM de CI (solo accesible desde cidrs_admin)."
+  value       = "http://${azurerm_public_ip.pip_ci.fqdn}:8080"
+}
+
+output "url_sonarqube" {
+  description = "URL de SonarQube en la VM de CI (solo accesible desde cidrs_admin)."
+  value       = "http://${azurerm_public_ip.pip_ci.fqdn}:9000"
+}
+
+output "ssh_ci" {
+  description = "Comando para conectarse por SSH a la VM de CI."
+  value       = "ssh -i ${var.llave_privada_ssh} ${var.usuario_admin}@${azurerm_public_ip.pip_ci.ip_address}"
+}

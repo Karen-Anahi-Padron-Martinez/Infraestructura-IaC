@@ -1,0 +1,8 @@
+# Jenkins con las herramientas que usan los pipelines (antes se instalaban a mano en el contenedor local).
+# python3-venv: ci/semgrep.sh y ci/desplegar.sh crean sus entornos virtuales (Semgrep y Ansible).
+FROM {{ jenkins_imagen }}
+USER root
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 python3-venv python3-pip openssh-client \
+ && rm -rf /var/lib/apt/lists/*
+USER jenkins

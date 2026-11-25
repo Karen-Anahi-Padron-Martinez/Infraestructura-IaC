@@ -1,0 +1,26 @@
+# Variables del grupo "ci" (Jenkins + SonarQube). Los secretos van cifrados en vault.yml (Ansible Vault).
+dir_ci: /opt/ci
+
+# Versiones fijadas: las mismas que se usaron en local durante la Unidad II
+jenkins_imagen: jenkins/jenkins:2.580.1-lts-jdk21
+sonarqube_imagen: sonarqube:9.9.8-community
+postgres_imagen: postgres:16.16-alpine
+mariadb_ci_imagen: mariadb:11.4
+
+# SonarQube usa Elasticsearch embebido: exige estos límites del kernel
+sonar_vm_max_map_count: 524288
+sonar_fs_file_max: 131072
+
+# Swap de respaldo: Maven + el analizador JS de Sonar + SonarQube compiten por los 8 GB
+swap_gb: 4
+
+# Base de datos de SonarQube (PostgreSQL) y MariaDB para las pruebas del pipeline BD-dbgestor
+sonar_db_password: "{{ vault_sonar_db_password }}"
+sonar_admin_password: "{{ vault_sonar_admin_password }}"
+mariadb_ci_root_password: "{{ vault_mariadb_ci_root_password }}"
+mariadb_ci_usuario: ci_bd
+mariadb_ci_password: "{{ vault_mariadb_ci_password }}"
+
+# Jenkins despliega a la VM de la aplicación por la red privada de Azure (no por internet)
+ip_privada_app: "{{ hostvars['vm-gestor']['ip_privada'] }}"
+url_jenkins: "http://{{ fqdn_publico }}:8080/"

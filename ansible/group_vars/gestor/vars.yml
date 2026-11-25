@@ -1,7 +1,4 @@
 # Variables del grupo "gestor". Los secretos van cifrados en vault.yml (Ansible Vault).
-zona_horaria: America/Mexico_City
-
-usuario_despliegue: "{{ ansible_user }}"
 dir_app: /opt/gestor
 
 # Imágenes publicadas por el pipeline en GitHub Container Registry

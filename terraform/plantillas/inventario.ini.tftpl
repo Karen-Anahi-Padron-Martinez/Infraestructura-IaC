@@ -1,8 +1,16 @@
 # Generado por Terraform (local_file.inventario_ansible). No editar a mano.
 [gestor]
-vm-gestor ansible_host=${ip} ansible_user=${usuario}
+vm-gestor ansible_host=${ip} ansible_user=${usuario} ip_privada=${ip_privada}
 
 [gestor:vars]
 # La llave privada la define quien ejecuta Ansible (ansible.cfg: private_key_file)
 fqdn_publico=${fqdn}
+
+[ci]
+vm-gestor-ci ansible_host=${ip_ci} ansible_user=${usuario}
+
+[ci:vars]
+fqdn_publico=${fqdn_ci}
+
+[all:vars]
 ansible_python_interpreter=/usr/bin/python3

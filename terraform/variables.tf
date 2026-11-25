@@ -22,6 +22,24 @@ variable "tamano_vm" {
   default     = "Standard_B2als_v2"
 }
 
+variable "tamano_vm_ci" {
+  description = "Tamaño de la VM de CI: 2 vCPU AMD y 8 GB (Jenkins compilando con Maven + SonarQube con su Elasticsearch no caben en 4 GB)."
+  type        = string
+  default     = "Standard_B2as_v2"
+}
+
+variable "disco_ci_gb" {
+  description = "Disco de la VM de CI en GB (repositorio Maven, imágenes Docker e índices de SonarQube)."
+  type        = number
+  default     = 64
+}
+
+variable "ip_privada_ci" {
+  description = "IP privada fija de la VM de CI dentro de snet-app (10.20.1.0/24)."
+  type        = string
+  default     = "10.20.1.10"
+}
+
 variable "usuario_admin" {
   description = "Usuario administrador de la VM (acceso solo por llave SSH)."
   type        = string
@@ -41,7 +59,7 @@ variable "llave_privada_ssh" {
 }
 
 variable "cidrs_admin" {
-  description = "Redes (CIDR) autorizadas para SSH y Grafana. Normalmente la IP pública propia con /32."
+  description = "Redes (CIDR) autorizadas para SSH, Grafana, Jenkins y SonarQube. Normalmente la IP pública propia con /32."
   type        = list(string)
 
   validation {

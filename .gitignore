@@ -12,6 +12,7 @@ id_rsa*
 *.tfstate
 *.tfstate.*
 *.tfplan
+tfplan
 crash.log
 .terraform.lock.hcl.bak
 

@@ -22,7 +22,7 @@ resource "azurerm_subnet" "app" {
   address_prefixes     = ["10.20.1.0/24"]
 }
 
-# Firewall: solo HTTP es público; SSH y Grafana solo desde las redes del administrador.
+# Firewall: solo HTTP es público; SSH, Grafana, Jenkins y SonarQube solo desde las redes del administrador.
 # MariaDB, la API y Prometheus no tienen regla, por lo que no son accesibles desde internet.
 resource "azurerm_network_security_group" "nsg" {
   name                = "nsg-${var.proyecto}"
@@ -64,6 +64,19 @@ resource "azurerm_network_security_group" "nsg" {
     destination_port_range     = "3000"
     source_address_prefixes    = var.cidrs_admin
     destination_address_prefix = "*"
+  }
+
+  # Jenkins y SonarQube solo en la VM de CI y solo desde las redes del administrador
+  security_rule {
+    name                       = "permitir-jenkins-sonar-admin"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_ranges    = ["8080", "9000"]
+    source_address_prefixes    = var.cidrs_admin
+    destination_address_prefix = var.ip_privada_ci
   }
 }
 
@@ -151,5 +164,8 @@ resource "local_file" "inventario_ansible" {
     usuario       = var.usuario_admin
     llave_privada = pathexpand(var.llave_privada_ssh)
     fqdn          = azurerm_public_ip.pip.fqdn
+    ip_privada    = azurerm_network_interface.nic.private_ip_address
+    ip_ci         = azurerm_public_ip.pip_ci.ip_address
+    fqdn_ci       = azurerm_public_ip.pip_ci.fqdn
   })
 }

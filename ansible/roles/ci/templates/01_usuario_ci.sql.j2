@@ -1,0 +1,4 @@
+-- Usuario de CI con permisos solo sobre las BD temporales dbgestor_ci_* (generado por Ansible)
+CREATE USER IF NOT EXISTS '{{ mariadb_ci_usuario }}'@'%' IDENTIFIED BY '{{ mariadb_ci_password }}';
+GRANT ALL PRIVILEGES ON `dbgestor\_ci\_%`.* TO '{{ mariadb_ci_usuario }}'@'%';
+FLUSH PRIVILEGES;

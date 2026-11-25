@@ -2,6 +2,7 @@
 # Idempotente: se puede ejecutar varias veces; solo cambia lo que difiere del estado deseado.
 #   ansible-playbook site.yml                 -> todo
 #   ansible-playbook site.yml --tags app      -> solo redespliegue de la aplicación
+#   ansible-playbook site.yml --limit gestor  -> solo la VM de la aplicación
 - name: Configurar servidor y desplegar el Gestor de Proyectos
   hosts: gestor
   become: true
@@ -14,3 +15,16 @@
       tags: [app]
     - role: monitoreo
       tags: [monitoreo]
+
+# VM de integración continua: Jenkins + SonarQube + MariaDB de pruebas
+#   ansible-playbook site.yml --limit ci      -> solo la VM de CI
+- name: Configurar la VM de CI (Jenkins y SonarQube)
+  hosts: ci
+  become: true
+  roles:
+    - role: comun
+      tags: [comun]
+    - role: docker
+      tags: [docker]
+    - role: ci
+      tags: [ci]
